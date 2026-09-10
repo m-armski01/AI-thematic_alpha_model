@@ -1,0 +1,39 @@
+# Full stack pinned per SPEC §3. Layer 0 only needs the "core" + data + storage + config + testing
+# groups; the rest are installed as later layers come online.
+
+# --- Core data ---
+pandas==2.2.2
+numpy==1.26.4
+
+# --- Market & macro data ---
+# NOTE: yfinance depends on Yahoo's undocumented endpoints and breaks frequently on old pins.
+# 0.2.40 was blocked outright by Yahoo (crumb/auth changes); 1.7.0 confirmed working 2026-09-10.
+yfinance==1.7.0
+pandas-datareader==0.10.0
+
+# --- Storage / cache ---
+pyarrow==16.1.0
+
+# --- Config ---
+PyYAML==6.0.1
+pydantic==2.7.4
+python-dotenv==1.0.1
+
+# --- Statistics / ML (Layer 2+) ---
+statsmodels==0.14.2
+scikit-learn==1.5.0
+lightgbm==4.3.0
+
+# --- Plotting (Layer 1F / Layer 3) ---
+matplotlib==3.9.0
+plotly==5.22.0
+
+# --- Dashboard (Layer 3) ---
+streamlit==1.35.0
+
+# --- Testing & quality ---
+pytest==8.2.2
+pytest-cov==5.0.0
+ruff==0.4.9
+black==24.4.2
+mypy==1.10.0

@@ -1,0 +1,83 @@
+run:
+  name: "base"
+  seed: 42
+  start_date: "2015-01-01"
+  end_date: null              # null = today
+  base_currency: "EUR"        # EUR | USD
+
+data:
+  max_cache_age_days: 1
+  min_history_days: 252       # exclude ticker if trailing history < this
+
+universe:
+  file: "data/reference/universe.csv"
+  benchmarks: ["^GSPC", "QQQ", "SOXX"]
+
+features:
+  momentum_windows: [21, 63, 126, 252]
+  vol_windows: [21, 63]
+  ma_windows: [50, 200]
+  skip_recent_days: 5         # momentum computed skipping last 5d (reversal control)
+
+macro_gate:
+  enabled: true
+  vix_threshold: 25.0         # above this, scale exposure down
+  vix_scale_factor: 0.5
+  yield_change_window: 21
+  yield_change_threshold: 0.40   # +40bps in 21d => risk-off
+  yield_scale_factor: 0.7
+  oil_change_window: 21
+  oil_change_threshold: 0.20     # +20% in 21d => risk-off
+  oil_scale_factor: 0.85
+  min_exposure: 0.30             # floor: never fully de-risk
+  combination: "multiplicative"  # multiplicative | min | average
+
+ranker:
+  method: "momentum_zscore"      # momentum_zscore | equal_weight | ml
+  top_n: 5
+  weighting: "conviction_tier"   # equal | inverse_vol | conviction_tier
+  conviction_tiers: [0.30, 0.25, 0.20, 0.15, 0.10]
+
+event_mask:
+  enabled: true
+  block_days_before_earnings: 3
+  block_new_entries_only: true   # true = don't add; existing positions untouched
+
+sizing:
+  house_money:
+    enabled: true
+    trigger_gain_pct: 0.50       # at +50% unrealized
+    action: "recover_principal"  # trim to return original cost basis
+    trailing_stop_pct: 0.25      # on the remainder
+  max_position_weight: 0.35
+  cash_floor: 0.0
+
+backtest:
+  rebalance: "weekly"            # weekly | monthly
+  rebalance_day: "friday"
+  execution_lag_days: 1          # signal at t, execute at t+1
+  execution_price: "open"        # open | close
+  initial_capital: 10000.0
+
+costs:
+  model: "bps"                   # bps | flat_fee | both
+  bps_per_side: 5.0
+  flat_fee: 1.0                  # EUR, Trade Republic-style
+  slippage_bps: 3.0
+
+risk:
+  rf_series: "DTB3"
+  var_confidence: [0.95, 0.99]
+  rolling_beta_window: 60
+  monte_carlo_runs: 10000
+
+ml:
+  enabled: false                 # Layer 2 flag
+  horizon_days: 21
+  label: "outperform_basket_median"
+  models: ["logistic", "random_forest", "lightgbm"]
+  cv:
+    n_splits: 5
+    purge_days: 21
+    embargo_days: 5
+  feature_lag_days: 1

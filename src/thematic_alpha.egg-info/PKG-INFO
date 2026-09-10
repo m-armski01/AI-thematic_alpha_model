@@ -1,0 +1,75 @@
+Metadata-Version: 2.4
+Name: thematic-alpha
+Version: 0.0.1
+Summary: Macro-gated thematic equity strategy research engine (Layer 0 foundation)
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+
+# thematic-alpha
+
+A macro-gated thematic equity **strategy research engine**. It formalizes a discretionary,
+macro-gated thematic momentum process into a reproducible, testable system.
+
+> **This is a research and analysis system, not a live trading system.** It never places orders,
+> integrates with a broker, or paper-trades. Historical results do not indicate future performance.
+> The universe was selected with hindsight and results are correspondingly biased upward. Nothing
+> here is investment advice.
+
+## Build status
+
+This repository is being built in layers (see `AI sector quantbot SPEC.md` in the parent folder).
+
+**Currently implemented: Layer 0 — Foundation.**
+
+- Repo structure, tooling (`ruff`/`black`/`mypy`/`pytest`), pinned `requirements.txt`.
+- Typed, validated configuration (`pydantic` v2) covering the full config schema.
+- Price data loader with Parquet caching and a per-ticker data report.
+- CLI entrypoint.
+- Offline test suite.
+
+Layers 1–3 (feature panel, strategy, backtest engine, risk metrics, ML, dashboard) are not yet built.
+
+## Setup
+
+Requires Python 3.11+.
+
+```bash
+cd thematic-alpha
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+pip install pandas numpy pyarrow pydantic PyYAML python-dotenv yfinance
+```
+
+(For the full future stack, use `pip install -r requirements.txt` instead — heavier.)
+
+## Usage (Layer 0)
+
+```bash
+# Download NVDA, cache it to Parquet, print its date range + row count:
+python -m thematic_alpha.run --config configs/base.yaml
+
+# Run again -> hits the cache, measurably faster:
+python -m thematic_alpha.run --config configs/base.yaml
+
+# Force a fresh download:
+python -m thematic_alpha.run --config configs/base.yaml --refresh
+```
+
+Cached data lands in `data/cache/prices/{ticker}.parquet` (gitignored).
+
+## Tests
+
+```bash
+pytest
+```
+
+Tests run fully offline (no network) using synthetic fixtures.
+
+## Disclaimer
+
+This project is a research and educational exercise in quantitative strategy design, backtesting
+methodology, and machine-learning validation. It does not execute trades, does not constitute
+investment advice, and its historical results do not indicate future performance. The universe was
+selected with hindsight and results are correspondingly biased upward.

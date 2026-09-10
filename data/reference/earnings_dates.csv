@@ -1,0 +1,6 @@
+ticker,earnings_date
+# Maintain this file by hand. One row per earnings release. Dates are ISO YYYY-MM-DD.
+# The event mask (built in Layer 1C) reads this file; any ticker with no rows here
+# "fails open" (no mask applied) and logs a warning. Fill in real dates incrementally.
+# Example (delete or replace):
+# NVDA,2024-02-21

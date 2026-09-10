@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/thematic_alpha/__init__.py
+src/thematic_alpha/config.py
+src/thematic_alpha/run.py
+src/thematic_alpha.egg-info/PKG-INFO
+src/thematic_alpha.egg-info/SOURCES.txt
+src/thematic_alpha.egg-info/dependency_links.txt
+src/thematic_alpha.egg-info/top_level.txt
+src/thematic_alpha/data/__init__.py
+src/thematic_alpha/data/prices.py
+tests/test_config.py
+tests/test_prices_cache.py

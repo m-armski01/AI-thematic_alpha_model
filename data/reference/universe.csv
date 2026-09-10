@@ -1,0 +1,13 @@
+ticker,name,segment,exchange,currency,regime_start_date,notes
+NVDA,NVIDIA,compute,NASDAQ,USD,,
+MSFT,Microsoft,hyperscaler,NASDAQ,USD,,
+AMZN,Amazon,hyperscaler,NASDAQ,USD,,
+META,Meta Platforms,hyperscaler,NASDAQ,USD,,
+GOOGL,Alphabet,hyperscaler,NASDAQ,USD,,
+000660.KS,SK Hynix,memory,KRX,KRW,,non-US calendar; FX conversion required
+MU,Micron,memory,NASDAQ,USD,,
+LITE,Lumentum,optical,NASDAQ,USD,,
+COHR,Coherent,optical,NYSE,USD,,II-VI/Coherent merger 2022 - verify ticker continuity
+NBIS,Nebius Group,neocloud,NASDAQ,USD,,short history; relisted late 2024 post-restructuring
+IREN,IREN,datacenter,NASDAQ,USD,,business model changed from BTC mining - regime break
+DELL,Dell Technologies,hardware,NYSE,USD,,
