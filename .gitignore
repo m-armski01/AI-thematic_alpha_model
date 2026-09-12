@@ -1,8 +1,14 @@
-# Data cache (re-downloadable) and generated outputs
+# Data cache (re-downloadable) and generated outputs. The final report, data-quality report and
+# figures ARE committed so the README renders on GitHub; everything else under outputs/ is not.
 data/cache/
-outputs/
+outputs/*
 !outputs/.gitkeep
+!outputs/report.md
+!outputs/data_quality.md
+!outputs/figures/
+outputs/figures/*
 !outputs/figures/.gitkeep
+!outputs/figures/*.png
 
 # Python
 __pycache__/
