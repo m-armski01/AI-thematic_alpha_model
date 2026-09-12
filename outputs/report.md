@@ -8,7 +8,7 @@
 
 | Setting | Value |
 |---|---|
-| Code version | `c55a113` |
+| Code version | `37bb025` |
 | Backtest window | 2015-01-01 → latest data |
 | Base currency | EUR |
 | Rebalance | weekly, friday |
