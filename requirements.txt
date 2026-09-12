@@ -9,7 +9,10 @@ numpy==1.26.4
 # NOTE: yfinance depends on Yahoo's undocumented endpoints and breaks frequently on old pins.
 # 0.2.40 was blocked outright by Yahoo (crumb/auth changes); 1.7.0 confirmed working 2026-09-10.
 yfinance==1.7.0
-pandas-datareader==0.10.0
+# FRED is read via its keyless CSV endpoint (fredgraph.csv) with pandas directly. pandas-datareader
+# 0.10.0 imports `distutils`, which Python 3.12 removed, so it is deliberately NOT used.
+# Real exchange session calendars (XNYS, XKRX) for the master trading calendar.
+exchange_calendars==4.5.6
 
 # --- Storage / cache ---
 pyarrow==16.1.0

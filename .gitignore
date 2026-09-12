@@ -1,0 +1,24 @@
+# Data cache (re-downloadable) and generated outputs
+data/cache/
+outputs/
+!outputs/.gitkeep
+!outputs/figures/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environments
+.venv/
+venv/
+.env
+
+# OS
+.DS_Store
+!data/cache/.gitkeep
