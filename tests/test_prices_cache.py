@@ -92,7 +92,7 @@ def test_stale_cache_triggers_fetch(tmp_path, synthetic_ohlcv, monkeypatch):
 def test_ticker_report_counts(synthetic_ohlcv):
     report = prices._ticker_report("TEST", synthetic_ohlcv, from_cache=True)
     assert report.rows == len(synthetic_ohlcv)
-    assert report.missing_business_days == 0  # fixture uses contiguous business days
+    assert report.missing_sessions == 0  # fixture uses contiguous business days
 
 
 @pytest.mark.parametrize("refresh", [False, True])

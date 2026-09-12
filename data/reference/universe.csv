@@ -4,7 +4,7 @@ MSFT,Microsoft,hyperscaler,NASDAQ,USD,,
 AMZN,Amazon,hyperscaler,NASDAQ,USD,,
 META,Meta Platforms,hyperscaler,NASDAQ,USD,,
 GOOGL,Alphabet,hyperscaler,NASDAQ,USD,,
-000660.KS,SK Hynix,memory,KRX,KRW,,non-US calendar; FX conversion required
+000660.KS,SK Hynix,memory,KRX,KRW,2003-01-02,non-US calendar; FX conversion required; yfinance Adj Close is negative through 2002-12-26 (mis-adjusted 2002 reverse split) so history is truncated to 2003
 MU,Micron,memory,NASDAQ,USD,,
 LITE,Lumentum,optical,NASDAQ,USD,,
 COHR,Coherent,optical,NYSE,USD,,II-VI/Coherent merger 2022 - verify ticker continuity

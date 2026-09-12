@@ -8,6 +8,9 @@ run:
 data:
   max_cache_age_days: 1
   min_history_days: 252       # exclude ticker if trailing history < this
+  history_start: "1998-01-01" # download start; run.start_date is the backtest start
+  suspicious_return_threshold: 0.25   # |1d return| above this is flagged in data_quality.md
+  macro_publication_lag_days: 1       # FRED obs at t become usable at t+1 session
 
 universe:
   file: "data/reference/universe.csv"
@@ -40,6 +43,7 @@ ranker:
 
 event_mask:
   enabled: true
+  file: "data/reference/earnings_dates.csv"
   block_days_before_earnings: 3
   block_new_entries_only: true   # true = don't add; existing positions untouched
 
