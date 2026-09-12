@@ -116,6 +116,20 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
         f"{100 * tw.sum(axis=1).mean():.0f}% | event mask: {c.entries_blocked} entries blocked "
         f"pre-earnings, {len(c.failed_open)} tickers failed open -> {tw_path.name}"
     )
+
+    t0 = time.perf_counter()
+    results = pipeline.run_backtests(bundle, features, strategy, config)
+    t_bt = time.perf_counter() - t0
+    ccy = config.run.base_currency
+    for name in [pipeline.STRATEGY, *pipeline.BENCHMARK_ORDER]:
+        r = results[name]
+        print(
+            f"[Layer 1D] {name:<16} {r.equity_curve.index[0].date()} -> "
+            f"{r.equity_curve.index[-1].date()} | final {r.final_equity:,.0f} {ccy} "
+            f"(x{r.final_equity / r.initial_capital:.2f}) | costs {r.total_costs:,.0f} {ccy} "
+            f"| {len(r.trades)} trades"
+        )
+    print(f"[Layer 1D] 4 backtests + local-currency run in {t_bt:.1f}s")
     return 0
 
 

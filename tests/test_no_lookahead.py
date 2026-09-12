@@ -71,6 +71,27 @@ def test_b_deleting_future_data_leaves_past_unchanged(market, config, baseline, 
     pd.testing.assert_frame_equal(truncated, past, check_dtype=False)
 
 
+def test_d_engine_never_trades_before_signal_plus_lag(market, config):
+    """A price shock after the signal date cannot affect the trade that the signal produced."""
+    from thematic_alpha.backtest.engine import run_backtest
+
+    close = market.panel.adj_close[["AAA", "BBB"]]
+    open_ = market.panel.adj_open[["AAA", "BBB"]]
+    sig = market.master[100]
+    tw = pd.DataFrame({"AAA": [0.6], "BBB": [0.4]}, index=[sig])
+    bt = config.backtest.model_copy(update={"execution_lag_days": 1, "execution_price": "open"})
+    base = run_backtest(close, tw, bt, config.costs, prices_open=open_)
+    shocked_close, shocked_open = close.copy(), open_.copy()
+    shocked_close.loc[market.master[102] :] *= 5  # shock strictly after execution (t+1)
+    shocked_open.loc[market.master[102] :] *= 5
+    shocked = run_backtest(shocked_close, tw, bt, config.costs, prices_open=shocked_open)
+    pd.testing.assert_frame_equal(base.trades, shocked.trades)
+    assert base.trades["date"].unique().tolist() == [market.master[101]]
+    pd.testing.assert_series_equal(
+        base.equity_curve.loc[: market.master[101]], shocked.equity_curve.loc[: market.master[101]]
+    )
+
+
 def test_c_future_spike_leaves_no_trace_before_it(market, config, baseline):
     spike_at = market.master[500]
     raw = {t: df.copy() for t, df in market.raw.items()}

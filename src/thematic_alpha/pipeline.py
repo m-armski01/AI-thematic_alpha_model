@@ -12,6 +12,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from thematic_alpha.backtest.benchmarks import (
+    buy_and_hold_targets,
+    naive_momentum_targets,
+    single_asset_targets,
+)
+from thematic_alpha.backtest.engine import BacktestResult, run_backtest
 from thematic_alpha.backtest.schedule import signal_dates
 from thematic_alpha.config import Config
 from thematic_alpha.data import calendar as cal
@@ -232,6 +238,57 @@ def build_strategy(
         event_mask=mask,
         composed=composed,
     )
+
+
+STRATEGY = "strategy"
+BENCHMARK_ORDER = ["sp500", "equal_weight_bh", "naive_momentum"]
+
+
+def run_backtests(
+    bundle: DataBundle,
+    features: FeaturePanel,
+    strategy: StrategyBundle,
+    config: Config,
+) -> dict[str, BacktestResult]:
+    """Layer 1D: strategy + three benchmarks in base currency, identical engine and costs.
+
+    Also returns ``strategy_local`` (the same targets on local-currency prices) so the FX
+    contribution can be separated in Layer 1E.
+    """
+    base = config.run.base_currency
+    close_base, open_base = base_currency_prices(bundle, base)
+    close_local, open_local = bundle.panel.adj_close, bundle.panel.adj_open
+    market = config.universe.benchmarks[0]
+    sessions = bundle.sessions_of[market]
+    dates = strategy.signal_dates
+    end = config.run.end_date
+
+    def _run(close, open_, targets):
+        return run_backtest(
+            close, targets, config.backtest, config.costs, open_, sessions, dates.min(), end
+        )
+
+    targets = {
+        STRATEGY: strategy.target_weights,
+        "sp500": single_asset_targets(market, dates.min()),
+        "equal_weight_bh": buy_and_hold_targets(features.eligible, dates),
+        "naive_momentum": naive_momentum_targets(
+            features.wide, features.eligible, dates, config.ranker.top_n
+        ),
+    }
+    results = {name: _run(close_base, open_base, tw) for name, tw in targets.items()}
+    results["strategy_local"] = _run(close_local, open_local, strategy.target_weights)
+    for name in [STRATEGY, *BENCHMARK_ORDER]:
+        r = results[name]
+        logger.info(
+            "backtest %-16s final=%.0f (x%.2f) costs=%.0f trades=%d",
+            name,
+            r.final_equity,
+            r.final_equity / r.initial_capital,
+            r.total_costs,
+            len(r.trades),
+        )
+    return results
 
 
 def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> Path:
