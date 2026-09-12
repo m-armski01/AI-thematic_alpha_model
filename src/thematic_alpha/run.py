@@ -92,6 +92,18 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
         f"({len(bundle.master)} sessions) | {t_data:.1f}s"
     )
     print(f"[Layer 1A] data quality report -> {quality_path}")
+
+    t0 = time.perf_counter()
+    features = pipeline.build_features(bundle, config)
+    t_feat = time.perf_counter() - t0
+    feat_path = root / "outputs" / "feature_panel.parquet"
+    features.tidy.to_parquet(feat_path)
+    last = features.dates[-1]
+    print(
+        f"[Layer 1B] feature panel {features.tidy.shape[0]} rows x {features.tidy.shape[1]} cols "
+        f"| eligible on {last.date()}: {int(features.eligible.loc[last].sum())}"
+        f"/{features.eligible.shape[1]} | {t_feat:.1f}s -> {feat_path.name}"
+    )
     return 0
 
 

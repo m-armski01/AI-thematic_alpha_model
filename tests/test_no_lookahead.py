@@ -1,0 +1,97 @@
+"""REQUIRED (SPEC §9): the feature panel at date t uses only data through the close of t.
+
+(a) Shifting all inputs forward by one day changes the outputs (and reproduces the previous row).
+(b) Feature values at t are unchanged when all data after t is deleted.
+(c) A synthetic future spike produces no feature/signal change before the spike.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from tests.synthetic import Market, build_features, make_config, make_market, truncate
+from thematic_alpha.data.prices import build_price_panel
+
+
+@pytest.fixture(scope="module")
+def config():
+    return make_config(data={"min_history_days": 100})
+
+
+@pytest.fixture(scope="module")
+def market():
+    return make_market()
+
+
+@pytest.fixture(scope="module")
+def baseline(market, config):
+    return build_features(market, config).tidy
+
+
+def _shift_inputs(market: Market) -> Market:
+    """Every input's value for day i is moved to day i+1 (sessions unchanged)."""
+    raw = {}
+    for t, df in market.raw.items():
+        own = market.sessions_of[t]
+        shifted = df.reindex(own).shift(1).dropna(how="all")
+        raw[t] = shifted
+    panel = build_price_panel(raw, market.master, market.sessions_of)
+    return Market(
+        master=market.master,
+        sessions_of=market.sessions_of,
+        raw=raw,
+        panel=panel,
+        dollar_volume=market.dollar_volume.shift(1),
+        macro=market.macro.shift(1),
+        currency_of=market.currency_of,
+    )
+
+
+def test_a_shifting_inputs_changes_outputs(market, config, baseline):
+    shifted = build_features(_shift_inputs(market), config).tidy
+    assert not shifted.equals(baseline)
+    # AAA trades every master day, so its shifted row at t must equal the baseline row at t-1
+    # for every pure price feature — i.e. the outputs move with the inputs, not the calendar.
+    cols = ["ret_1d", "ret_21d", "mom_63", "vol_21", "px_to_ma_50", "dist_from_252d_high"]
+    t, t_prev = market.master[-1], market.master[-2]
+    got = shifted.loc[(t, "AAA"), cols].astype(float)
+    exp = baseline.loc[(t_prev, "AAA"), cols].astype(float)
+    pd.testing.assert_series_equal(got, exp, check_names=False)
+    # ...and macro features shift the same way.
+    assert shifted.loc[(t, "AAA"), "vix_level"] == baseline.loc[(t_prev, "AAA"), "vix_level"]
+
+
+@pytest.mark.parametrize("pos", [320, 451, 599, 699])
+def test_b_deleting_future_data_leaves_past_unchanged(market, config, baseline, pos):
+    t = market.master[pos]
+    truncated = build_features(truncate(market, t), config).tidy
+    past = baseline.loc[baseline.index.get_level_values("date") <= t]
+    pd.testing.assert_frame_equal(truncated, past, check_dtype=False)
+
+
+def test_c_future_spike_leaves_no_trace_before_it(market, config, baseline):
+    spike_at = market.master[500]
+    raw = {t: df.copy() for t, df in market.raw.items()}
+    aaa = raw["AAA"]
+    aaa.loc[aaa.index >= spike_at, ["Open", "High", "Low", "Close", "Adj Close"]] *= 3.0
+    spiked = Market(
+        master=market.master,
+        sessions_of=market.sessions_of,
+        raw=raw,
+        panel=build_price_panel(raw, market.master, market.sessions_of),
+        dollar_volume=market.dollar_volume,
+        macro=market.macro,
+        currency_of=market.currency_of,
+    )
+    out = build_features(spiked, config).tidy
+    dates = out.index.get_level_values("date")
+    before, after = dates < spike_at, dates >= spike_at
+    pd.testing.assert_frame_equal(out[before], baseline[before], check_dtype=False)
+    # Sanity: the spike is visible once it happens (otherwise the test proves nothing).
+    assert out.loc[(spike_at, "AAA"), "ret_1d"] > 1.5
+    assert not np.allclose(
+        out[after]["mom_rank"].fillna(-1).to_numpy(),
+        baseline[after]["mom_rank"].fillna(-1).to_numpy(),
+    )

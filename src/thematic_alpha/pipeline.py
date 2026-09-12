@@ -25,6 +25,7 @@ from thematic_alpha.data.prices import (
     load_prices,
 )
 from thematic_alpha.data.universe import Universe, apply_regime_start, load_universe
+from thematic_alpha.features.build import FeaturePanel, build_feature_panel
 
 logger = logging.getLogger("thematic_alpha.pipeline")
 
@@ -129,6 +130,38 @@ def base_currency_prices(bundle: DataBundle, base: str) -> tuple[pd.DataFrame, p
     close = fxmod.to_base(bundle.panel.adj_close, ccy, base, bundle.fx)
     open_ = fxmod.to_base(bundle.panel.adj_open, ccy, base, bundle.fx)
     return close, open_
+
+
+def dollar_volume_base(bundle: DataBundle, base: str) -> pd.DataFrame:
+    """Close x Volume per ticker, converted into ``base`` currency (liquidity screen input)."""
+    return fxmod.to_base(
+        bundle.panel.close * bundle.panel.volume, bundle.currency_of, base, bundle.fx
+    )
+
+
+def build_features(bundle: DataBundle, config: Config) -> FeaturePanel:
+    """Layer 1B: the tidy feature panel for the universe tickers (local-currency features)."""
+    fp = build_feature_panel(
+        prices=bundle.panel,
+        dollar_volume_base=dollar_volume_base(bundle, config.run.base_currency),
+        macro=bundle.macro,
+        sessions_of=bundle.sessions_of,
+        master=bundle.master,
+        tickers=[t for t in bundle.universe.tickers if t in bundle.panel.tickers],
+        config=config,
+    )
+    last = fp.eligible.index[-1]
+    logger.info(
+        "feature panel: %d rows x %d cols, %s -> %s, eligible on %s: %d/%d",
+        len(fp.tidy),
+        fp.tidy.shape[1],
+        fp.dates.min().date(),
+        fp.dates.max().date(),
+        last.date(),
+        int(fp.eligible.loc[last].sum()),
+        fp.eligible.shape[1],
+    )
+    return fp
 
 
 def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> Path:
