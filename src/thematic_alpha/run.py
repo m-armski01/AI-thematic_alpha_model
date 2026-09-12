@@ -81,7 +81,7 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
     t0 = time.perf_counter()
     bundle = pipeline.load_data(config, root, refresh=refresh)
     t_data = time.perf_counter() - t0
-    quality_path = pipeline.write_data_quality(bundle, config, root)
+    quality_path, n_flagged = pipeline.write_data_quality(bundle, config, root)
 
     n_cached = sum(r.from_cache for r in bundle.reports)
     print(
@@ -146,6 +146,12 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
         f"{100 * fx['cagr_local']:.1f}% local -> FX contribution "
         f"{100 * fx['fx_contribution_cagr']:+.1f}%/yr"
     )
+
+    t0 = time.perf_counter()
+    report_path = pipeline.write_report(
+        bundle, features, strategy, results, risk, config, root, n_flagged
+    )
+    print(f"[Layer 1F] report -> {report_path} ({time.perf_counter() - t0:.1f}s)")
     return 0
 
 

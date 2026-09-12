@@ -33,7 +33,10 @@ from thematic_alpha.data.prices import (
 )
 from thematic_alpha.data.universe import Universe, apply_regime_start, load_universe
 from thematic_alpha.features.build import FeaturePanel, build_feature_panel
-from thematic_alpha.risk.drawdown import drawdown_table
+from thematic_alpha.reporting import plots
+from thematic_alpha.reporting.report import LABELS, git_hash, render_report
+from thematic_alpha.reporting.report import write_report as write_report_file
+from thematic_alpha.risk.drawdown import drawdown_table, underwater
 from thematic_alpha.risk.metrics import (
     annualize_rf,
     compute_metrics,
@@ -320,7 +323,11 @@ def compute_risk(
     rf_daily = annualize_rf(bundle.macro[config.risk.rf_series])
 
     names = [STRATEGY, *BENCHMARK_ORDER]
-    metrics = {n: compute_metrics(results[n], rf_daily, market_returns, config.risk) for n in names}
+    schedule = results[STRATEGY].execution_dates  # same weekly periods for every run
+    metrics = {
+        n: compute_metrics(results[n], rf_daily, market_returns, config.risk, schedule)
+        for n in names
+    }
     drawdowns = {n: drawdown_table(results[n].equity_curve) for n in names}
     strat = results[STRATEGY]
     rf = rf_daily.reindex(strat.daily_returns.index).ffill().fillna(0.0)
@@ -353,7 +360,92 @@ def compute_risk(
     )
 
 
-def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> Path:
+def make_figures(
+    results: dict[str, BacktestResult],
+    risk: RiskBundle,
+    strategy: StrategyBundle,
+    features: FeaturePanel,
+    config: Config,
+    fig_dir: Path,
+) -> dict[str, Path]:
+    """Layer 1F figures -> outputs/figures/*.png."""
+    strat = results[STRATEGY]
+    idx = strat.equity_curve.index
+    figs = {
+        "equity": plots.equity_curves(
+            {n: results[n].equity_curve for n in [STRATEGY, *BENCHMARK_ORDER]},
+            LABELS,
+            fig_dir / "equity_curves.png",
+        ),
+        "underwater": plots.underwater(underwater(strat.equity_curve), fig_dir / "underwater.png"),
+        "rolling_sharpe": plots.rolling_line(
+            risk.rolling_sharpe,
+            "Rolling 12-month Sharpe, strategy",
+            "Sharpe (252-day window)",
+            fig_dir / "rolling_sharpe.png",
+            reference=0.0,
+        ),
+        "rolling_beta": plots.rolling_line(
+            risk.rolling_beta,
+            f"Rolling {config.risk.rolling_beta_window}-day beta vs S&P 500, strategy",
+            "Beta",
+            fig_dir / "rolling_beta.png",
+            reference=1.0,
+        ),
+        "weights": plots.weights_area(strat.weights_history, fig_dir / "weights.png"),
+        "gate": plots.gate_and_vix(
+            strategy.gate["exposure"].reindex(idx),
+            features.macro["vix_level"].reindex(idx),
+            config.macro_gate.vix_threshold,
+            fig_dir / "gate_vs_vix.png",
+        ),
+    }
+    return figs
+
+
+def write_report(
+    bundle: DataBundle,
+    features: FeaturePanel,
+    strategy: StrategyBundle,
+    results: dict[str, BacktestResult],
+    risk: RiskBundle,
+    config: Config,
+    root: Path,
+    n_flagged: int,
+) -> Path:
+    out_dir = root / "outputs"
+    figures = make_figures(results, risk, strategy, features, config, out_dir / "figures")
+    c = strategy.composed
+    text = render_report(
+        config=config,
+        commit=git_hash(root),
+        quality_summary={
+            "n_tickers": len(bundle.panel.tickers),
+            "n_macro": len(bundle.macro_raw.columns),
+            "n_flagged": n_flagged,
+            "threshold": config.data.suspicious_return_threshold,
+        },
+        strategy_summary={
+            "n_signal_dates": len(strategy.signal_dates),
+            "exposure_mean": float(c.exposure.mean()),
+            "exposure_min": float(c.exposure.min()),
+            "n_gated": int((c.exposure < 1).sum()),
+            "entries_blocked": c.entries_blocked,
+            "masked_ticker_dates": c.masked_ticker_dates,
+            "n_failed_open": len(c.failed_open),
+        },
+        metrics=risk.metrics,
+        drawdowns=risk.drawdowns,
+        fx=risk.fx,
+        figures=figures,
+        figure_root=out_dir,
+    )
+    path = write_report_file(text, out_dir / "report.md")
+    logger.info("report -> %s (%d figures)", path, len(figures))
+    return path
+
+
+def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> tuple[Path, int]:
     rows = [
         quality.ticker_quality(
             t,
@@ -372,4 +464,4 @@ def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> Path:
     logger.info(
         "data quality report -> %s (%d tickers, %d flagged returns)", path, len(rows), n_flags
     )
-    return path
+    return path, n_flags

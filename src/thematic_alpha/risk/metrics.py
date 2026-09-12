@@ -91,7 +91,13 @@ def compute_metrics(
     rf_daily: pd.Series,
     market_returns: pd.Series,
     cfg: RiskConfig,
+    period_dates: pd.DatetimeIndex | None = None,
 ) -> dict:
+    """``period_dates`` defines the rebalance periods for hit rate / avg win / avg loss.
+
+    Pass the strategy's execution schedule for every run so buy-and-hold benchmarks (which
+    trade only a handful of times) are measured over the same weekly periods.
+    """
     r = result.daily_returns
     rf = rf_daily.reindex(r.index).ffill().fillna(0.0)
     excess = r - rf
@@ -100,7 +106,8 @@ def compute_metrics(
     equity = result.equity_curve
     years = len(r) / PERIODS
     mdd = max_drawdown(equity)
-    per = period_returns(equity, result.execution_dates)
+    dates = period_dates if period_dates is not None else result.execution_dates
+    per = period_returns(equity, dates)
     wins, losses = per[per > 0], per[per < 0]
     alpha, beta = ols_alpha_beta(excess, mkt_excess)
 

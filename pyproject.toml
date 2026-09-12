@@ -34,3 +34,7 @@ disallow_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = [
+    # matplotlib 3.9 still calls pyparsing's camelCase API; not ours to fix.
+    "ignore:.*deprecated - use.*:DeprecationWarning",
+]
