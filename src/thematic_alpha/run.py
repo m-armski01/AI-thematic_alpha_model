@@ -104,6 +104,18 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
         f"| eligible on {last.date()}: {int(features.eligible.loc[last].sum())}"
         f"/{features.eligible.shape[1]} | {t_feat:.1f}s -> {feat_path.name}"
     )
+
+    strategy = pipeline.build_strategy(bundle, features, config, root)
+    tw = strategy.target_weights
+    tw_path = root / "outputs" / "target_weights.csv"
+    tw.round(6).to_csv(tw_path)
+    c = strategy.composed
+    print(
+        f"[Layer 1C] {len(strategy.signal_dates)} signal dates | exposure mean "
+        f"{c.exposure.mean():.2f} (min {c.exposure.min():.2f}) | avg invested "
+        f"{100 * tw.sum(axis=1).mean():.0f}% | event mask: {c.entries_blocked} entries blocked "
+        f"pre-earnings, {len(c.failed_open)} tickers failed open -> {tw_path.name}"
+    )
     return 0
 
 

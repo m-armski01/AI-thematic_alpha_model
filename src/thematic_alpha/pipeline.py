@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from thematic_alpha.backtest.schedule import signal_dates
 from thematic_alpha.config import Config
 from thematic_alpha.data import calendar as cal
 from thematic_alpha.data import fx as fxmod
@@ -26,6 +27,11 @@ from thematic_alpha.data.prices import (
 )
 from thematic_alpha.data.universe import Universe, apply_regime_start, load_universe
 from thematic_alpha.features.build import FeaturePanel, build_feature_panel
+from thematic_alpha.strategy.compose import ComposeResult, compose_target_weights
+from thematic_alpha.strategy.event_mask import EventMask, build_event_mask, load_earnings_dates
+from thematic_alpha.strategy.macro_gate import gate_factors
+from thematic_alpha.strategy.ranker import rank
+from thematic_alpha.strategy.sizing import announce_house_money
 
 logger = logging.getLogger("thematic_alpha.pipeline")
 
@@ -162,6 +168,70 @@ def build_features(bundle: DataBundle, config: Config) -> FeaturePanel:
         fp.eligible.shape[1],
     )
     return fp
+
+
+@dataclass
+class StrategyBundle:
+    signal_dates: pd.DatetimeIndex
+    gate: pd.DataFrame  # date x (vix_factor, yield_factor, oil_factor, exposure), all dates
+    ranker_weights: pd.DataFrame  # date x ticker, all dates
+    event_mask: EventMask
+    composed: ComposeResult
+
+    @property
+    def target_weights(self) -> pd.DataFrame:
+        return self.composed.target_weights
+
+
+def build_strategy(
+    bundle: DataBundle, features: FeaturePanel, config: Config, root: Path
+) -> StrategyBundle:
+    """Layer 1C: gate + ranker + event mask + sizing -> target weights on signal dates."""
+    market = config.universe.benchmarks[0]
+    dates = signal_dates(
+        bundle.sessions_of[market],
+        config.backtest.rebalance,
+        config.backtest.rebalance_day,
+        start=config.run.start_date,
+        end=config.run.end_date,
+    )
+    gate = gate_factors(features.macro, config.macro_gate)
+    tickers = list(features.eligible.columns)
+    ranker_weights = rank(features.wide, features.eligible, config.ranker)
+
+    if config.event_mask.enabled:
+        earnings = load_earnings_dates(root / config.event_mask.file)
+        mask = build_event_mask(
+            bundle.master, tickers, earnings, config.event_mask.block_days_before_earnings
+        )
+    else:
+        mask = None
+    announce_house_money(config.sizing)
+    composed = compose_target_weights(ranker_weights, gate["exposure"], dates, config.sizing, mask)
+    if mask is None:
+        mask = EventMask(
+            blocked=pd.DataFrame(False, index=bundle.master, columns=tickers), failed_open=[]
+        )
+    exp = composed.exposure
+    logger.info(
+        "strategy: %d signal dates %s -> %s | exposure mean=%.2f min=%.2f (<1 on %d dates) | "
+        "avg names held=%.1f | avg invested=%.1f%%",
+        len(dates),
+        dates.min().date(),
+        dates.max().date(),
+        exp.mean(),
+        exp.min(),
+        int((exp < 1).sum()),
+        (composed.target_weights > 0).sum(axis=1).mean(),
+        100 * composed.target_weights.sum(axis=1).mean(),
+    )
+    return StrategyBundle(
+        signal_dates=dates,
+        gate=gate,
+        ranker_weights=ranker_weights,
+        event_mask=mask,
+        composed=composed,
+    )
 
 
 def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> Path:
