@@ -130,6 +130,22 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
             f"| {len(r.trades)} trades"
         )
     print(f"[Layer 1D] 4 backtests + local-currency run in {t_bt:.1f}s")
+
+    risk = pipeline.compute_risk(bundle, results, config)
+    print(f"[Layer 1E] {'run':<16} {'CAGR':>7} {'vol':>7} {'Sharpe':>7} {'maxDD':>7} {'costs%':>7}")
+    for name in [pipeline.STRATEGY, *pipeline.BENCHMARK_ORDER]:
+        m = risk.metrics[name]
+        print(
+            f"[Layer 1E] {name:<16} {100 * m['cagr']:>6.1f}% {100 * m['ann_vol']:>6.1f}% "
+            f"{m['sharpe']:>7.2f} {100 * m['max_drawdown']:>6.1f}% "
+            f"{100 * m['costs_pct_final_equity']:>6.2f}%"
+        )
+    fx = risk.fx
+    print(
+        f"[Layer 1E] FX: strategy CAGR {100 * fx['cagr_base']:.1f}% in {ccy} vs "
+        f"{100 * fx['cagr_local']:.1f}% local -> FX contribution "
+        f"{100 * fx['fx_contribution_cagr']:+.1f}%/yr"
+    )
     return 0
 
 

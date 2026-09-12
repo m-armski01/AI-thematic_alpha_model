@@ -33,6 +33,14 @@ from thematic_alpha.data.prices import (
 )
 from thematic_alpha.data.universe import Universe, apply_regime_start, load_universe
 from thematic_alpha.features.build import FeaturePanel, build_feature_panel
+from thematic_alpha.risk.drawdown import drawdown_table
+from thematic_alpha.risk.metrics import (
+    annualize_rf,
+    compute_metrics,
+    fx_contribution,
+    rolling_beta,
+    rolling_sharpe,
+)
 from thematic_alpha.strategy.compose import ComposeResult, compose_target_weights
 from thematic_alpha.strategy.event_mask import EventMask, build_event_mask, load_earnings_dates
 from thematic_alpha.strategy.macro_gate import gate_factors
@@ -289,6 +297,60 @@ def run_backtests(
             len(r.trades),
         )
     return results
+
+
+@dataclass
+class RiskBundle:
+    metrics: dict[str, dict]  # run name -> metrics dict
+    drawdowns: dict[str, pd.DataFrame]  # run name -> top-5 drawdown table
+    rolling_beta: pd.Series  # strategy vs market
+    rolling_sharpe: pd.Series  # strategy, 12-month window
+    fx: dict  # base vs local decomposition of the strategy
+    rf_daily: pd.Series
+    market_returns: pd.Series
+
+
+def compute_risk(
+    bundle: DataBundle, results: dict[str, BacktestResult], config: Config
+) -> RiskBundle:
+    """Layer 1E: metrics for the strategy and every benchmark, all net of costs."""
+    market = config.universe.benchmarks[0]
+    close_base, _ = base_currency_prices(bundle, config.run.base_currency)
+    market_returns = close_base[market].pct_change(fill_method=None).rename("market")
+    rf_daily = annualize_rf(bundle.macro[config.risk.rf_series])
+
+    names = [STRATEGY, *BENCHMARK_ORDER]
+    metrics = {n: compute_metrics(results[n], rf_daily, market_returns, config.risk) for n in names}
+    drawdowns = {n: drawdown_table(results[n].equity_curve) for n in names}
+    strat = results[STRATEGY]
+    rf = rf_daily.reindex(strat.daily_returns.index).ffill().fillna(0.0)
+    rb = rolling_beta(
+        strat.daily_returns - rf,
+        market_returns.reindex(strat.daily_returns.index) - rf,
+        config.risk.rolling_beta_window,
+    )
+    rs = rolling_sharpe(strat.daily_returns - rf)
+    fx = fx_contribution(strat, results["strategy_local"])
+    m = metrics[STRATEGY]
+    logger.info(
+        "risk: strategy CAGR=%.1f%% vol=%.1f%% sharpe=%.2f maxDD=%.1f%% | FX contribution "
+        "(total, %s vs local)=%.1f%%",
+        100 * m["cagr"],
+        100 * m["ann_vol"],
+        m["sharpe"],
+        100 * m["max_drawdown"],
+        config.run.base_currency,
+        100 * fx["fx_contribution_total"],
+    )
+    return RiskBundle(
+        metrics=metrics,
+        drawdowns=drawdowns,
+        rolling_beta=rb,
+        rolling_sharpe=rs,
+        fx=fx,
+        rf_daily=rf_daily,
+        market_returns=market_returns,
+    )
 
 
 def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> Path:
