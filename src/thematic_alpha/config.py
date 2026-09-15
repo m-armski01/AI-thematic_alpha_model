@@ -69,8 +69,11 @@ class MacroGateConfig(_Base):
 class RankerConfig(_Base):
     method: Literal["momentum_zscore", "equal_weight", "ml"] = "momentum_zscore"
     top_n: int = Field(gt=0)
-    weighting: Literal["equal", "inverse_vol", "conviction_tier"] = "conviction_tier"
+    weighting: Literal["equal", "inverse_vol", "conviction_tier", "softmax"] = "conviction_tier"
     conviction_tiers: list[float]
+    # softmax over the held names' momentum z-scores: w_i ∝ exp((z_i - max z) / τ). Neutral
+    # default 1.0 is unused unless weighting == "softmax".
+    softmax_temperature: float = Field(default=1.0, gt=0.0)
 
     @model_validator(mode="after")
     def _tiers_cover_top_n(self) -> RankerConfig:

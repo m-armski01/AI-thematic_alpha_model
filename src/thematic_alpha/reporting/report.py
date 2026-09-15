@@ -115,7 +115,15 @@ def render_report(
             f"model={config.costs.model}, {config.costs.bps_per_side:g} bps/side + "
             f"{config.costs.slippage_bps:g} bps slippage, flat {config.costs.flat_fee:g} {ccy}",
         ],
-        ["Ranker", f"{config.ranker.method}, top {config.ranker.top_n}, {config.ranker.weighting}"],
+        [
+            "Ranker",
+            f"{config.ranker.method}, top {config.ranker.top_n}, {config.ranker.weighting}"
+            + (
+                f" (τ={config.ranker.softmax_temperature:g})"
+                if config.ranker.weighting == "softmax"
+                else ""
+            ),
+        ],
         [
             "Macro gate",
             f"VIX>{config.macro_gate.vix_threshold:g}→×{config.macro_gate.vix_scale_factor:g}; "

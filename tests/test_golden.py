@@ -19,3 +19,8 @@ def test_fixture_exercises_gate_mask_and_listings():
 
 def test_all_neutral_reproduces_layer1():
     assert_golden()
+
+
+def test_conviction_tiers_are_golden_after_softmax():
+    """The softmax code path must not touch the Layer 1 weighting."""
+    assert_golden(ranker={"weighting": "conviction_tier", "softmax_temperature": 2.0})

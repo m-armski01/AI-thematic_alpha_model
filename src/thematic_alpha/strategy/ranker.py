@@ -1,9 +1,11 @@
 """Ranker (SPEC §1C): target weights per date from the feature panel.
 
 ``momentum_zscore``: z-score ``mom_63`` across *eligible* names, select ``top_n``, weight per
-``weighting``. Tickers failing ``min_history_days`` are already ineligible (features/build.py),
-so they never enter the cross-section, and weights renormalize over the survivors. Rows with no
-eligible name get zero weight (cash).
+``weighting``: ``equal``, ``inverse_vol``, ``conviction_tier`` by rank, or ``softmax`` over the
+selected names' z-scores with temperature τ, ``w_i = exp((z_i − max z) / τ) / Σ``
+(shift-invariant, defined for any real z, no clipping). Tickers failing ``min_history_days`` are
+already ineligible (features/build.py), so they never enter the cross-section, and weights
+renormalize over the survivors. Rows with no eligible name get zero weight (cash).
 """
 
 from __future__ import annotations
@@ -32,15 +34,28 @@ def select_top_n(score: pd.DataFrame, top_n: int) -> pd.DataFrame:
     return order.where(order <= top_n)
 
 
+def softmax_rows(score: pd.DataFrame, selected: pd.DataFrame, temperature: float) -> pd.DataFrame:
+    """Row-wise softmax of ``score`` over ``selected`` names, stabilised by the row maximum."""
+    z = score.where(selected)
+    shifted = z.sub(z.max(axis=1), axis=0) / temperature
+    return np.exp(shifted).fillna(0.0)
+
+
 def weight_selected(
     position: pd.DataFrame,
     weighting: str,
     tiers: list[float],
     vol: pd.DataFrame | None = None,
+    score: pd.DataFrame | None = None,
+    temperature: float = 1.0,
 ) -> pd.DataFrame:
     selected = position.notna()
     if weighting == "equal":
         raw = selected.astype(float)
+    elif weighting == "softmax":
+        if score is None:
+            raise ValueError("softmax weighting needs the score frame")
+        raw = softmax_rows(score, selected, temperature)
     elif weighting == "inverse_vol":
         if vol is None:
             raise ValueError("inverse_vol weighting needs a vol frame")
@@ -67,7 +82,14 @@ def rank(wide: dict[str, pd.DataFrame], eligible: pd.DataFrame, cfg: RankerConfi
         return weight_selected(eligible.astype(float).where(eligible), "equal", [])
     score = zscore_rows(wide[SIGNAL], eligible)
     position = select_top_n(score, cfg.top_n)
-    return weight_selected(position, cfg.weighting, cfg.conviction_tiers, wide.get(VOL))
+    return weight_selected(
+        position,
+        cfg.weighting,
+        cfg.conviction_tiers,
+        wide.get(VOL),
+        score,
+        cfg.softmax_temperature,
+    )
 
 
 def naive_momentum(

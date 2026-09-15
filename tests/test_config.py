@@ -46,6 +46,7 @@ def test_out_of_range_value_raises(base_config_path):
 
 def test_conviction_tiers_must_cover_top_n(base_config_path):
     raw = copy.deepcopy(_load_raw(base_config_path))
+    raw["ranker"]["weighting"] = "conviction_tier"
     raw["ranker"]["top_n"] = 10  # more than the 5 conviction tiers provided
     with pytest.raises(ValidationError):
         Config.model_validate(raw)

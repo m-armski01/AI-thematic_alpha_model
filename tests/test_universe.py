@@ -61,7 +61,9 @@ def test_short_history_excluded_and_weights_renormalize():
     from thematic_alpha.strategy.ranker import rank
 
     market = make_market()
-    cfg = make_config(data={"min_history_days": 100}, ranker={"top_n": 2})
+    cfg = make_config(
+        data={"min_history_days": 100}, ranker={"top_n": 2, "weighting": "conviction_tier"}
+    )
     feats = build_features(market, cfg)
     # Cut BBB's history so it only has ~50 sessions: it must never be held.
     raw = dict(market.raw)
