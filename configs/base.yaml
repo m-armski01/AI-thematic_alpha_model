@@ -24,13 +24,16 @@ features:
 
 macro_gate:
   enabled: true
-  vix_threshold: 25.0         # above this, scale exposure down
+  vix_threshold: 25.0         # engage above this
+  vix_release_threshold: 20.0 # Schmitt trigger: release at or below this (L1: null = engage)
   vix_scale_factor: 0.5
   yield_change_window: 21
-  yield_change_threshold: 0.40   # +40bps in 21d => risk-off
+  yield_change_threshold: 0.40   # +40bps in 21d => engage
+  yield_release_threshold: 0.32  # release at or below +32bp (0.8 x engage; L1: null)
   yield_scale_factor: 0.7
   oil_change_window: 21
-  oil_change_threshold: 0.20     # +20% in 21d => risk-off
+  oil_change_threshold: 0.20     # +20% in 21d => engage
+  oil_release_threshold: 0.16    # release at or below +16% (0.8 x engage; L1: null)
   oil_scale_factor: 0.85
   min_exposure: 0.30             # floor: never fully de-risk (unused in block mode)
   combination: "multiplicative"  # multiplicative | min | average

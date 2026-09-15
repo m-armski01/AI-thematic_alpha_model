@@ -71,6 +71,39 @@ class MacroGateConfig(_Base):
     action: Literal["scale", "block_increases"] = "scale"
     # Universe ``segment`` values that trade freely while risk-off (e.g. ["defensive"]).
     block_exempt_segments: list[str] = Field(default_factory=list)
+    # (b) Schmitt trigger per sub-gate: engage when the signal is above the engage threshold,
+    # release only when it is at or below the release threshold, hold the state in between.
+    # None -> release = engage, which is exactly the Layer 1 comparator.
+    vix_release_threshold: float | None = None
+    yield_release_threshold: float | None = None
+    oil_release_threshold: float | None = None
+
+    @model_validator(mode="after")
+    def _release_not_above_engage(self) -> MacroGateConfig:
+        for name, engage, release in (
+            ("vix", self.vix_threshold, self.vix_release_threshold),
+            ("yield", self.yield_change_threshold, self.yield_release_threshold),
+            ("oil", self.oil_change_threshold, self.oil_release_threshold),
+        ):
+            if release is not None and release > engage:
+                raise ValueError(
+                    f"{name}_release_threshold={release} must not exceed the engage "
+                    f"threshold {engage}"
+                )
+        return self
+
+    def release_threshold(self, name: str) -> float:
+        engage = {
+            "vix": self.vix_threshold,
+            "yield": self.yield_change_threshold,
+            "oil": self.oil_change_threshold,
+        }[name]
+        release = {
+            "vix": self.vix_release_threshold,
+            "yield": self.yield_release_threshold,
+            "oil": self.oil_release_threshold,
+        }[name]
+        return engage if release is None else release
 
 
 class RankerConfig(_Base):

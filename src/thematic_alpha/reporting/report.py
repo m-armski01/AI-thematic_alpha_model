@@ -49,9 +49,17 @@ def git_hash(root: Path) -> str:
 
 def _gate_config_text(config: Config) -> str:
     g = config.macro_gate
+
+    def _band(engage: float, name: str, fmt) -> str:
+        release = g.release_threshold(name)
+        return fmt(engage) if release == engage else f"{fmt(engage)} (release {fmt(release)})"
+
     triggers = (
-        f"VIX>{g.vix_threshold:g}; 10y +{100 * g.yield_change_threshold:.0f}bp/"
-        f"{g.yield_change_window}d; WTI +{100 * g.oil_change_threshold:.0f}%/{g.oil_change_window}d"
+        f"VIX>{_band(g.vix_threshold, 'vix', lambda v: f'{v:g}')}; "
+        f"10y +{_band(g.yield_change_threshold, 'yield', lambda v: f'{100 * v:.0f}bp')}/"
+        f"{g.yield_change_window}d; "
+        f"WTI +{_band(g.oil_change_threshold, 'oil', lambda v: f'{100 * v:.0f}%')}/"
+        f"{g.oil_change_window}d"
     )
     if not g.enabled:
         return f"disabled ({triggers})"

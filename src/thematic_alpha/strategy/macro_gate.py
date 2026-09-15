@@ -11,8 +11,12 @@ Three sub-gates (VIX level, 21-day 10y-yield change, 21-day WTI change) each pro
   not scaled, non-exempt names simply cannot increase (see ``compose``). The scale factors and
   ``min_exposure`` are unused in this mode.
 
-A NaN input fails open (released) for that sub-gate, with a log line. Everything here is a pure
-function of history on the daily feature index; ``applied_gate`` samples it on signal dates.
+Each sub-gate is a Schmitt trigger: it engages when its signal is *above* the engage threshold
+and releases only when the signal is *at or below* the release threshold; in between it keeps
+its previous state. With release == engage (the neutral default) there is no dead band and the
+trigger is exactly the Layer 1 comparator ``signal > threshold``. A NaN input fails open
+(released) for that sub-gate on that date, with a log line. Everything here is a pure function
+of history on the daily feature index; ``applied_gate`` samples it on signal dates.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 from thematic_alpha.config import MacroGateConfig
@@ -29,11 +34,28 @@ logger = logging.getLogger("thematic_alpha.strategy.macro_gate")
 SUBGATES = ("vix", "yield", "oil")
 
 
-def _engaged(signal: pd.Series, threshold: float, name: str) -> pd.Series:
+def schmitt(signal: pd.Series, engage: float, release: float) -> pd.Series:
+    """Stateful comparator: True above ``engage``, False at or below ``release``, previous state
+    in between; NaN -> False (fail open). Runs forward in time only."""
+    x = signal.to_numpy(dtype=float)
+    out = np.zeros(len(x), dtype=bool)
+    state = False
+    for i, v in enumerate(x):
+        if np.isnan(v):
+            state = False
+        elif v > engage:
+            state = True
+        elif v <= release:
+            state = False
+        out[i] = state
+    return pd.Series(out, index=signal.index)
+
+
+def _engaged(signal: pd.Series, engage: float, release: float, name: str) -> pd.Series:
     n_nan = int(signal.isna().sum())
     if n_nan:
         logger.warning("%s gate: %d dates have no input; failing open (released).", name, n_nan)
-    return (signal > threshold).fillna(False).astype(bool).rename(f"{name}_engaged")
+    return schmitt(signal, engage, release).rename(f"{name}_engaged")
 
 
 def _inputs(macro_feats: pd.DataFrame, cfg: MacroGateConfig) -> dict[str, pd.Series]:
@@ -56,7 +78,12 @@ def engaged_states(macro_feats: pd.DataFrame, cfg: MacroGateConfig) -> pd.DataFr
         "yield": cfg.yield_change_threshold,
         "oil": cfg.oil_change_threshold,
     }
-    return pd.DataFrame({f"{k}_engaged": _engaged(x[k], thresholds[k], k) for k in SUBGATES})
+    return pd.DataFrame(
+        {
+            f"{k}_engaged": _engaged(x[k], thresholds[k], cfg.release_threshold(k), k)
+            for k in SUBGATES
+        }
+    )
 
 
 def gate_factors(macro_feats: pd.DataFrame, cfg: MacroGateConfig) -> pd.DataFrame:

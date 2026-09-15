@@ -293,6 +293,9 @@ LAYER1_NEUTRAL: dict[str, dict] = {
         "combination": "multiplicative",
         "action": "scale",
         "block_exempt_segments": [],
+        "vix_release_threshold": None,
+        "yield_release_threshold": None,
+        "oil_release_threshold": None,
     },
     "event_mask": {"enabled": True, "block_new_entries_only": True},
     "turnover": {"position_band": 0.0},
@@ -302,7 +305,13 @@ LAYER1_NEUTRAL: dict[str, dict] = {
 CHOSEN: dict[str, dict] = {
     "ranker": {"weighting": "equal", "exit_rank": 8},
     "turnover": {"position_band": 0.02},
-    "macro_gate": {"action": "block_increases", "block_exempt_segments": ["defensive"]},
+    "macro_gate": {
+        "action": "block_increases",
+        "block_exempt_segments": ["defensive"],
+        "vix_release_threshold": 20.0,
+        "yield_release_threshold": 0.32,
+        "oil_release_threshold": 0.16,
+    },
 }
 
 
