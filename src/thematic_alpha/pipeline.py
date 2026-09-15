@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from thematic_alpha.backtest import attribution as attr
 from thematic_alpha.backtest.benchmarks import (
     buy_and_hold_targets,
     naive_momentum_targets,
@@ -306,6 +307,62 @@ def run_backtests(
 
 
 @dataclass
+class AttributionBundle:
+    trades: dict[str, pd.DataFrame]  # run name -> per-trade attribution
+    by_cause: dict[str, pd.Series]  # run name -> annualized turnover by cause (+ total)
+    gate: attr.GateDiagnostics  # transitions of the applied gate state over signal dates
+    gate_share: float  # gate turnover / total turnover of the strategy
+
+    @property
+    def strategy(self) -> pd.Series:
+        return self.by_cause[STRATEGY]
+
+
+def applied_gate_state(strategy: StrategyBundle) -> pd.Series:
+    """The gate state the book was actually subjected to, on signal dates."""
+    return strategy.composed.exposure
+
+
+def attribute_turnover(
+    strategy: StrategyBundle, results: dict[str, BacktestResult]
+) -> AttributionBundle:
+    """Step 1: split every run's turnover into membership / drift / gate / reweight."""
+    c = strategy.composed
+    books = {STRATEGY: (c.pre_gate_weights, c.post_gate_weights)}
+    trades, by_cause = {}, {}
+    for name in [STRATEGY, *BENCHMARK_ORDER]:
+        r = results[name]
+        p, q = books.get(name, (r.target_weights, r.target_weights))
+        trades[name] = attr.attribute_trades(r, p, q)
+        by_cause[name] = attr.turnover_by_cause(trades[name], attr.years_of(r))
+        expected = float(r.turnover_series.sum() / attr.years_of(r))
+        if abs(by_cause[name]["total"] - expected) > 1e-9 * max(expected, 1.0):
+            raise AssertionError(
+                f"{name}: attributed turnover {by_cause[name]['total']:.6f} != {expected:.6f}"
+            )
+    years = attr.years_of(results[STRATEGY])
+    gate = attr.gate_diagnostics(applied_gate_state(strategy), years)
+    s = by_cause[STRATEGY]
+    share = float(s["gate"] / s["total"]) if s["total"] > 0 else 0.0
+    logger.info(
+        "turnover by cause (strategy, x/yr): membership=%.2f drift=%.2f gate=%.2f reweight=%.2f "
+        "total=%.2f | gate: %d transitions (%.1f/yr), %d reverse within 1 and %d within 2 "
+        "signal dates, %.0f%% of turnover",
+        s["membership"],
+        s["drift"],
+        s["gate"],
+        s["reweight"],
+        s["total"],
+        gate.n_transitions,
+        gate.per_year,
+        gate.reversed_within_1,
+        gate.reversed_within_2,
+        100 * share,
+    )
+    return AttributionBundle(trades=trades, by_cause=by_cause, gate=gate, gate_share=share)
+
+
+@dataclass
 class RiskBundle:
     metrics: dict[str, dict]  # run name -> metrics dict
     drawdowns: dict[str, pd.DataFrame]  # run name -> top-5 drawdown table
@@ -370,6 +427,7 @@ def make_figures(
     features: FeaturePanel,
     config: Config,
     fig_dir: Path,
+    attribution: AttributionBundle | None = None,
 ) -> dict[str, Path]:
     """Layer 1F figures -> outputs/figures/*.png."""
     strat = results[STRATEGY]
@@ -403,6 +461,13 @@ def make_figures(
             fig_dir / "gate_vs_vix.png",
         ),
     }
+    if attribution is not None:
+        figs["turnover"] = plots.turnover_by_cause(
+            {n: attribution.by_cause[n] for n in [STRATEGY, *BENCHMARK_ORDER]},
+            LABELS,
+            attr.CAUSES,
+            fig_dir / "turnover_by_cause.png",
+        )
     return figs
 
 
@@ -415,10 +480,17 @@ def write_report(
     config: Config,
     root: Path,
     n_flagged: int,
+    attribution: AttributionBundle | None = None,
 ) -> Path:
     out_dir = root / "outputs"
-    figures = make_figures(results, risk, strategy, features, config, out_dir / "figures")
+    figures = make_figures(
+        results, risk, strategy, features, config, out_dir / "figures", attribution
+    )
     c = strategy.composed
+    if attribution is not None:
+        attribution.trades[STRATEGY].round(10).to_csv(
+            out_dir / "turnover_attribution.csv", index=False
+        )
     text = render_report(
         config=config,
         quality_summary={
@@ -441,6 +513,15 @@ def write_report(
         fx=risk.fx,
         figures=figures,
         figure_root=out_dir,
+        turnover=(
+            {
+                "by_cause": attribution.by_cause,
+                "gate": attribution.gate.as_dict(),
+                "gate_share": attribution.gate_share,
+            }
+            if attribution is not None
+            else None
+        ),
     )
     path = write_report_file(text, out_dir / "report.md")
     logger.info("report -> %s (%d figures)", path, len(figures))

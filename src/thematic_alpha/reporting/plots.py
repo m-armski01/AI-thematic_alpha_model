@@ -197,3 +197,36 @@ def gate_and_vix(exposure: pd.Series, vix: pd.Series, vix_threshold: float, path
     )
     _style(ax2, "VIX (1-day publication lag)")
     return _save(fig, path)
+
+
+def turnover_by_cause(
+    by_cause: dict[str, pd.Series], labels: dict[str, str], causes: list[str], path: Path
+) -> Path:
+    """One stacked bar per run: annualized turnover split by cause, total annotated on top."""
+    fig, ax = _fig(height=4.0)
+    names = list(by_cause)
+    x = range(len(names))
+    bottom = [0.0] * len(names)
+    for k, cause in enumerate(causes):
+        vals = [float(by_cause[n].get(cause, 0.0)) for n in names]
+        ax.bar(x, vals, bottom=bottom, color=SERIES[k], width=0.6, label=cause, linewidth=0)
+        bottom = [b + v for b, v in zip(bottom, vals, strict=True)]
+    for i in range(len(names)):
+        ax.annotate(
+            f"{bottom[i]:.1f}x",
+            (i, bottom[i]),
+            xytext=(0, 3),
+            textcoords="offset points",
+            ha="center",
+            fontsize=8,
+            color=INK_2,
+        )
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([labels.get(n, n) for n in names], fontsize=8)
+    ax.set_ylim(0, max(bottom) * 1.15 if max(bottom) > 0 else 1.0)
+    _style(ax, "Annualized turnover (x equity per year)")
+    _title(ax, "Turnover by cause, annualized")
+    leg = ax.legend(frameon=False, fontsize=8, loc="upper right")
+    for text in leg.get_texts():
+        text.set_color(INK_2)
+    return _save(fig, path)

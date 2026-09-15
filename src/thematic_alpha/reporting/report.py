@@ -87,6 +87,7 @@ def render_report(
     fx: dict,
     figures: dict[str, Path],
     figure_root: Path,
+    turnover: dict | None = None,
 ) -> str:
     ccy = config.run.base_currency
     lines: list[str] = []
@@ -181,6 +182,37 @@ def render_report(
         ),
         "",
     ]
+
+    # --- turnover attribution -------------------------------------------------------------
+    if turnover is not None:
+        lines += ["## Turnover attribution", ""]
+        lines += [
+            "Annualized turnover split by cause (see `backtest/attribution.py`): **membership** "
+            "(entries and exits), **drift** (re-trading a held name back to an unchanged target, "
+            "including the residual of earlier skipped or cash-scaled trades), **gate** (the "
+            "macro gate changing the book) and **reweight** (ranker, mask and cap effects on a "
+            "held name). Causes sum to the annualized turnover in the table above.",
+            "",
+        ]
+        causes = [c for c in next(iter(turnover["by_cause"].values())).index if c != "total"]
+        rows = [
+            [LABELS.get(n, n), *[fmt_num(float(s[c])) for c in causes], fmt_num(float(s["total"]))]
+            for n, s in turnover["by_cause"].items()
+        ]
+        lines += [markdown_table(["Run", *causes, "total"], rows), ""]
+        g = turnover["gate"]
+        lines += [
+            f"Macro gate: {g['n_transitions']} state transitions over {g['n_dates']} signal dates "
+            f"({fmt_num(g['per_year'], 1)} per year); {g['reversed_within_1']} of them reverse "
+            f"within 1 signal date and {g['reversed_within_2']} within 2. The gate accounts for "
+            f"{fmt_pct(turnover['gate_share'])} of the strategy's turnover.",
+            "",
+        ]
+        if "turnover" in figures:
+            lines += [
+                f"![turnover by cause]({figures['turnover'].relative_to(figure_root).as_posix()})",
+                "",
+            ]
 
     # --- FX -------------------------------------------------------------------------------
     lines += ["## FX decomposition (strategy)", ""]

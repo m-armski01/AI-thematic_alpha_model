@@ -64,6 +64,21 @@ Against equal-weight buy-and-hold of the same basket the strategy's CAGR is lowe
 
 VaR note: parametric (normal) 99% VaR is 4.6% against a historical 5.8%; daily excess kurtosis is 3.72. The normal assumption understates the tail.
 
+## Turnover attribution
+
+Annualized turnover split by cause (see `backtest/attribution.py`): **membership** (entries and exits), **drift** (re-trading a held name back to an unchanged target, including the residual of earlier skipped or cash-scaled trades), **gate** (the macro gate changing the book) and **reweight** (ranker, mask and cap effects on a held name). Causes sum to the annualized turnover in the table above.
+
+| Run | membership | drift | gate | reweight | total |
+|---|---:|---:|---:|---:|---:|
+| Strategy | 9.06 | 0.95 | 1.69 | 6.62 | 18.32 |
+| S&P 500 (SPY) B&H | 0.08 | 0.00 | 0.00 | 0.00 | 0.08 |
+| Equal-weight B&H (universe) | 0.27 | 0.21 | 0.00 | 0.14 | 0.62 |
+| Naive momentum (top-N) | 13.96 | 1.43 | 0.00 | 0.00 | 15.39 |
+
+Macro gate: 88 state transitions over 611 signal dates (7.3 per year); 27 of them reverse within 1 signal date and 34 within 2. The gate accounts for 9.2% of the strategy's turnover.
+
+![turnover by cause](figures/turnover_by_cause.png)
+
 ## FX decomposition (strategy)
 
 |  | In EUR | In local currencies |

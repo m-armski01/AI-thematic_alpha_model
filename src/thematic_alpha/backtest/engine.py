@@ -26,6 +26,18 @@ logger = logging.getLogger("thematic_alpha.backtest.engine")
 
 EPS = 1e-12
 NOISE = 1e-9  # trades smaller than this fraction of equity are float noise, not decisions
+TRADE_COLUMNS = [
+    "date",
+    "ticker",
+    "side",
+    "shares",
+    "price",
+    "notional",
+    "equity_pre",
+    "w_before",
+    "w_target",
+    "w_prev_target",
+]
 
 
 @dataclass
@@ -33,12 +45,17 @@ class BacktestResult:
     equity_curve: pd.Series  # daily, base currency
     daily_returns: pd.Series  # daily simple returns (first day vs initial capital)
     weights_history: pd.DataFrame  # daily date x ticker, post-close drifted weights
-    trades: pd.DataFrame  # one row per (execution date, ticker) with nonzero notional
+    # One row per (execution date, ticker) with nonzero notional. Weight columns are in units of
+    # pre-trade equity: w_before is the drifted pre-trade weight at the execution price, w_target
+    # the target executed, w_prev_target the last executed target for that ticker (0 if none).
+    trades: pd.DataFrame
     turnover_series: pd.Series  # per execution date: traded notional / pre-trade equity
     costs_paid: pd.Series  # per execution date, base currency
     cash: pd.Series  # daily
     initial_capital: float
     execution_dates: pd.DatetimeIndex
+    signal_to_execution: pd.Series | None = None  # signal date -> execution date actually run
+    target_weights: pd.DataFrame | None = None  # the targets the engine was given (signal dates)
 
     @property
     def total_costs(self) -> float:
@@ -105,6 +122,7 @@ def run_backtest(
     paid: dict[pd.Timestamp, float] = {}
     trade_rows: list[dict] = []
     skipped = 0
+    prev_target = np.zeros(n)
 
     for i, d in enumerate(dates):
         if d in exec_rows:
@@ -117,6 +135,7 @@ def run_backtest(
                 skipped += int((w[~tradable] > 0).sum())
                 w[~tradable] = 0.0
             current = np.where(tradable, shares * np.where(tradable, px, 0.0), 0.0)
+            w_before = current / equity_pre if equity_pre > 0 else np.zeros(n)
             delta = np.where(tradable, w * equity_pre - current, 0.0)
             # Ignore float-noise "trades" (relative to equity) so a hold really is a hold.
             delta[np.abs(delta) < NOISE * max(equity_pre, 1.0)] = 0.0
@@ -152,8 +171,13 @@ def run_backtest(
                         "shares": share_delta[j],
                         "price": px[j],
                         "notional": abs(delta[j]),
+                        "equity_pre": equity_pre,
+                        "w_before": w_before[j],
+                        "w_target": w[j],
+                        "w_prev_target": prev_target[j],
                     }
                 )
+            prev_target = w
         held_value = np.where(np.isfinite(close_ff[i]), shares * close_ff[i], 0.0)
         equity[i] = cash + held_value.sum()
         cash_hist[i] = cash
@@ -167,10 +191,10 @@ def run_backtest(
     equity_s = pd.Series(equity, index=dates, name="equity")
     prev = np.concatenate([[config.initial_capital], equity[:-1]])
     daily_ret = pd.Series(equity / prev - 1.0, index=dates, name="ret")
-    trades = pd.DataFrame(
-        trade_rows, columns=["date", "ticker", "side", "shares", "price", "notional"]
-    )
+    trades = pd.DataFrame(trade_rows, columns=TRADE_COLUMNS)
     exec_idx = pd.DatetimeIndex(list(turnover))
+    executed = exec_map[exec_map.isin(exec_idx)]
+    executed = executed[~executed.duplicated(keep="last")]
     return BacktestResult(
         equity_curve=equity_s,
         daily_returns=daily_ret,
@@ -181,4 +205,6 @@ def run_backtest(
         cash=pd.Series(cash_hist, index=dates, name="cash"),
         initial_capital=float(config.initial_capital),
         execution_dates=exec_idx,
+        signal_to_execution=executed,
+        target_weights=tw,
     )

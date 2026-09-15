@@ -28,8 +28,9 @@ logger = logging.getLogger("thematic_alpha.strategy.compose")
 
 @dataclass
 class ComposeResult:
-    target_weights: pd.DataFrame  # signal_date x ticker
-    pre_gate_weights: pd.DataFrame  # signal_date x ticker, after mask + normalize
+    target_weights: pd.DataFrame  # w: signal_date x ticker, final (post-cap)
+    pre_gate_weights: pd.DataFrame  # p: after ranker + mask + normalize
+    post_gate_weights: pd.DataFrame  # q: after the gate, before the position cap
     exposure: pd.Series  # signal_date
     entries_blocked: int  # (date, ticker) increases prevented by the event mask
     masked_ticker_dates: int  # size of the mask over the signal dates
@@ -94,6 +95,7 @@ def compose_target_weights(
     return ComposeResult(
         target_weights=targets,
         pre_gate_weights=pre_gate_df,
+        post_gate_weights=gated,
         exposure=exp,
         entries_blocked=entries_blocked,
         masked_ticker_dates=masked,

@@ -132,6 +132,17 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
         )
     print(f"[Layer 1D] 4 backtests + local-currency run in {t_bt:.1f}s")
 
+    attribution = pipeline.attribute_turnover(strategy, results)
+    s = attribution.strategy
+    g = attribution.gate
+    print(
+        "[Layer 2.1] turnover by cause (strategy, x/yr): "
+        + " ".join(f"{c}={s[c]:.2f}" for c in [*s.index[:-1], "total"])
+        + f" | gate: {g.n_transitions} transitions ({g.per_year:.1f}/yr), "
+        f"{g.reversed_within_1} reverse within 1, {g.reversed_within_2} within 2 signal dates, "
+        f"{100 * attribution.gate_share:.0f}% of turnover"
+    )
+
     risk = pipeline.compute_risk(bundle, results, config)
     print(f"[Layer 1E] {'run':<16} {'CAGR':>7} {'vol':>7} {'Sharpe':>7} {'maxDD':>7} {'costs%':>7}")
     for name in [pipeline.STRATEGY, *pipeline.BENCHMARK_ORDER]:
@@ -150,7 +161,7 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
 
     t0 = time.perf_counter()
     report_path = pipeline.write_report(
-        bundle, features, strategy, results, risk, config, root, n_flagged
+        bundle, features, strategy, results, risk, config, root, n_flagged, attribution
     )
     print(f"[Layer 1F] report -> {report_path} ({time.perf_counter() - t0:.1f}s)")
     return 0
