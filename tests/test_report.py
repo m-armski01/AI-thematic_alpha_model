@@ -67,7 +67,6 @@ def test_report_and_figures(tmp_path):
         assert p.exists() and p.stat().st_size > 1000
     text = report.render_report(
         config=cfg,
-        commit="abc123",
         quality_summary={"n_tickers": 4, "n_macro": 11, "n_flagged": 3, "threshold": 0.25},
         strategy_summary={
             "n_signal_dates": 80,
@@ -99,7 +98,6 @@ def test_report_is_deterministic(tmp_path):
     cfg, close, results = _results()
     kwargs = dict(
         config=cfg,
-        commit="abc123",
         quality_summary={"n_tickers": 4, "n_macro": 11, "n_flagged": 3, "threshold": 0.25},
         strategy_summary={
             "n_signal_dates": 80,

@@ -17,6 +17,7 @@ from pathlib import Path
 from thematic_alpha.config import Config
 from thematic_alpha.data.prices import load_ticker
 from thematic_alpha.data.universe import load_universe
+from thematic_alpha.reporting.report import git_hash
 
 # The single ticker exercised by the Layer 0 Definition of Done.
 LAYER0_TICKER = "NVDA"
@@ -162,6 +163,8 @@ def main(argv: list[str] | None = None) -> int:
     config = Config.from_yaml(args.config)
     # Paths in the config are relative to the project root (configs/base.yaml -> project root).
     root = args.config.resolve().parent.parent
+    # Logged, not embedded: the report must stay byte-identical across commits.
+    logging.info("code version %s", git_hash(root))
 
     if args.layer == 0:
         return run_layer0(config, root, refresh=args.refresh)

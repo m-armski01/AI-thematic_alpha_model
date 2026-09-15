@@ -1,4 +1,8 @@
-"""Generate ``outputs/report.md`` (SPEC §1F). Deterministic: no wall-clock timestamps."""
+"""Generate ``outputs/report.md`` (SPEC §1F).
+
+Deterministic: no wall-clock timestamps and no git hash (the hash is logged to stdout by the CLI
+instead, so the committed report does not change with every commit).
+"""
 
 from __future__ import annotations
 
@@ -76,7 +80,6 @@ def _verdict(metrics: dict[str, dict]) -> str:
 def render_report(
     *,
     config: Config,
-    commit: str,
     quality_summary: dict,
     strategy_summary: dict,
     metrics: dict[str, dict],
@@ -98,7 +101,6 @@ def render_report(
     # --- config ---------------------------------------------------------------------------
     lines += ["## Configuration", ""]
     cfg_rows = [
-        ["Code version", f"`{commit}`"],
         ["Backtest window", f"{config.run.start_date} → {config.run.end_date or 'latest data'}"],
         ["Base currency", ccy],
         ["Rebalance", f"{config.backtest.rebalance}, {config.backtest.rebalance_day}"],

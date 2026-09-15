@@ -34,7 +34,7 @@ from thematic_alpha.data.prices import (
 from thematic_alpha.data.universe import Universe, apply_regime_start, load_universe
 from thematic_alpha.features.build import FeaturePanel, build_feature_panel
 from thematic_alpha.reporting import plots
-from thematic_alpha.reporting.report import LABELS, git_hash, render_report
+from thematic_alpha.reporting.report import LABELS, render_report
 from thematic_alpha.reporting.report import write_report as write_report_file
 from thematic_alpha.risk.drawdown import drawdown_table, underwater
 from thematic_alpha.risk.metrics import (
@@ -103,10 +103,12 @@ def load_data(config: Config, root: Path, refresh: bool = False) -> DataBundle:
 
     # --- prices -------------------------------------------------------------------------------
     tickers = universe.tickers + [b for b in benchmarks if b not in universe.tickers]
+    # yfinance treats ``end`` as exclusive, so ask for one more day than the last session wanted.
+    fetch_end = (pd.Timestamp(end) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
     raw, reports = load_prices(
         tickers,
         start,
-        end,
+        fetch_end,
         cache_dir,
         config.data.max_cache_age_days,
         refresh,
@@ -418,7 +420,6 @@ def write_report(
     c = strategy.composed
     text = render_report(
         config=config,
-        commit=git_hash(root),
         quality_summary={
             "n_tickers": len(bundle.panel.tickers),
             "n_macro": len(bundle.macro_raw.columns),

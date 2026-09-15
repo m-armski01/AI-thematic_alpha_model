@@ -2,11 +2,11 @@ run:
   name: "base"
   seed: 42
   start_date: "2015-01-01"
-  end_date: null              # null = today
+  end_date: "2026-09-11"      # pinned data snapshot (null = today); see README "Reproduction"
   base_currency: "EUR"        # EUR | USD
 
 data:
-  max_cache_age_days: 1
+  max_cache_age_days: 30      # the snapshot above is served from the cache; --refresh re-downloads
   min_history_days: 252       # exclude ticker if trailing history < this
   history_start: "1998-01-01" # download start; run.start_date is the backtest start
   suspicious_return_threshold: 0.25   # |1d return| above this is flagged in data_quality.md

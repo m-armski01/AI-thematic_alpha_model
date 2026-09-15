@@ -40,8 +40,7 @@ against investor-relations calendars by the user. Never regenerate and commit it
 reviewing the printed spot-check list, and confirm the pipeline logs a nonzero
 "entries blocked pre-earnings" afterwards.
 
-## Known wart
+## Report determinism
 
-`outputs/report.md` embeds the git hash at run time, so it shows as modified after every commit and
-lags by one. Fix before Layer 2 (drop the hash from the report, or record the last commit touching
-`src/`).
+`outputs/report.md` no longer embeds the git hash (it is logged to stdout at the start of a run), so
+a rerun on the same data is byte-identical and the committed report never lags a commit.

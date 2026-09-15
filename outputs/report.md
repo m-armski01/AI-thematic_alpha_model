@@ -8,8 +8,7 @@
 
 | Setting | Value |
 |---|---|
-| Code version | `37bb025` |
-| Backtest window | 2015-01-01 → latest data |
+| Backtest window | 2015-01-01 → 2026-09-11 |
 | Base currency | EUR |
 | Rebalance | weekly, friday |
 | Execution | t + 1 session at the open |
