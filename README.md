@@ -229,6 +229,10 @@ pip install -r requirements.txt && pip install -e .
 python -m thematic_alpha.run --config configs/etf.yaml     # -> outputs/etf/
 python -m thematic_alpha.run --config configs/base.yaml    # -> outputs/base/ (control)
 
+# 2026 YTD (the window over which the strategy was actually run): same chosen rules, fresh state
+python -m thematic_alpha.run --config configs/etf_2026ytd.yaml    # -> outputs/etf_2026ytd/
+python -m thematic_alpha.run --config configs/base_2026ytd.yaml   # -> outputs/base_2026ytd/
+
 # The study: both universes, L1 baseline + cumulative + one-at-a-time + sensitivity + references
 python -m thematic_alpha.study --configs configs/etf.yaml configs/base.yaml   # -> outputs/study.md
 
