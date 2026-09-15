@@ -74,6 +74,9 @@ class RankerConfig(_Base):
     # softmax over the held names' momentum z-scores: w_i ∝ exp((z_i - max z) / τ). Neutral
     # default 1.0 is unused unless weighting == "softmax".
     softmax_temperature: float = Field(default=1.0, gt=0.0)
+    # Hysteresis (fixed slots): a held name stays while its rank is <= exit_rank; a name enters
+    # only at rank <= top_n and only into a vacant slot. None -> top_n, which is plain top-N.
+    exit_rank: int | None = None
 
     @model_validator(mode="after")
     def _tiers_cover_top_n(self) -> RankerConfig:
@@ -82,7 +85,13 @@ class RankerConfig(_Base):
                 f"conviction_tiers has {len(self.conviction_tiers)} entries "
                 f"but top_n={self.top_n}; need at least top_n tiers."
             )
+        if self.exit_rank is not None and self.exit_rank < self.top_n:
+            raise ValueError(f"exit_rank={self.exit_rank} must be >= top_n={self.top_n}")
         return self
+
+    @property
+    def effective_exit_rank(self) -> int:
+        return self.top_n if self.exit_rank is None else self.exit_rank
 
 
 class EventMaskConfig(_Base):

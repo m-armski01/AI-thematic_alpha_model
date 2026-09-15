@@ -38,6 +38,7 @@ macro_gate:
 ranker:
   method: "momentum_zscore"      # momentum_zscore | equal_weight | ml
   top_n: 5
+  exit_rank: 8                   # rank buffer: enter at <= top_n, exit below this (L1: null = top_n)
   weighting: "equal"             # equal | inverse_vol | conviction_tier | softmax (L1: conviction_tier)
   conviction_tiers: [0.30, 0.25, 0.20, 0.15, 0.10]
   softmax_temperature: 1.0       # only used by weighting: softmax (sensitivity set: 0.5, 1, 2)

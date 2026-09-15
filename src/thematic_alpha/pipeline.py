@@ -48,7 +48,7 @@ from thematic_alpha.risk.metrics import (
 from thematic_alpha.strategy.compose import ComposeResult, compose_target_weights
 from thematic_alpha.strategy.event_mask import EventMask, build_event_mask, load_earnings_dates
 from thematic_alpha.strategy.macro_gate import gate_factors
-from thematic_alpha.strategy.ranker import rank
+from thematic_alpha.strategy.ranker import rank_on_signal_dates
 from thematic_alpha.strategy.sizing import announce_house_money
 
 logger = logging.getLogger("thematic_alpha.pipeline")
@@ -195,9 +195,10 @@ def build_features(bundle: DataBundle, config: Config) -> FeaturePanel:
 class StrategyBundle:
     signal_dates: pd.DatetimeIndex
     gate: pd.DataFrame  # date x (vix_factor, yield_factor, oil_factor, exposure), all dates
-    ranker_weights: pd.DataFrame  # date x ticker, all dates
+    ranker_weights: pd.DataFrame  # signal_date x ticker
     event_mask: EventMask
     composed: ComposeResult
+    held_rank: pd.Series  # signal_date -> mean cross-sectional rank of held names (diagnostic)
 
     @property
     def target_weights(self) -> pd.DataFrame:
@@ -218,7 +219,8 @@ def build_strategy(
     )
     gate = gate_factors(features.macro, config.macro_gate)
     tickers = list(features.eligible.columns)
-    ranker_weights = rank(features.wide, features.eligible, config.ranker)
+    ranked = rank_on_signal_dates(features.wide, features.eligible, config.ranker, dates)
+    ranker_weights = ranked.weights
 
     if config.event_mask.enabled:
         earnings = load_earnings_dates(root / config.event_mask.file)
@@ -236,7 +238,7 @@ def build_strategy(
     exp = composed.exposure
     logger.info(
         "strategy: %d signal dates %s -> %s | exposure mean=%.2f min=%.2f (<1 on %d dates) | "
-        "avg names held=%.1f | avg invested=%.1f%%",
+        "avg names held=%.1f | avg invested=%.1f%% | avg held rank=%.2f (exit rank %d)",
         len(dates),
         dates.min().date(),
         dates.max().date(),
@@ -245,6 +247,8 @@ def build_strategy(
         int((exp < 1).sum()),
         (composed.target_weights > 0).sum(axis=1).mean(),
         100 * composed.target_weights.sum(axis=1).mean(),
+        ranked.held_rank.mean(),
+        config.ranker.effective_exit_rank,
     )
     return StrategyBundle(
         signal_dates=dates,
@@ -252,6 +256,7 @@ def build_strategy(
         ranker_weights=ranker_weights,
         event_mask=mask,
         composed=composed,
+        held_rank=ranked.held_rank,
     )
 
 
@@ -491,6 +496,7 @@ def write_report(
         attribution.trades[STRATEGY].round(10).to_csv(
             out_dir / "turnover_attribution.csv", index=False
         )
+    strategy.held_rank.round(6).to_csv(out_dir / "held_rank.csv")
     text = render_report(
         config=config,
         quality_summary={
@@ -507,6 +513,8 @@ def write_report(
             "entries_blocked": c.entries_blocked,
             "masked_ticker_dates": c.masked_ticker_dates,
             "n_failed_open": len(c.failed_open),
+            "held_rank_mean": float(strategy.held_rank.mean()),
+            "exit_rank": config.ranker.effective_exit_rank,
         },
         metrics=risk.metrics,
         drawdowns=risk.drawdowns,

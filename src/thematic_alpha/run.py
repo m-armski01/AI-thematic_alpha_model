@@ -115,7 +115,8 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
         f"[Layer 1C] {len(strategy.signal_dates)} signal dates | exposure mean "
         f"{c.exposure.mean():.2f} (min {c.exposure.min():.2f}) | avg invested "
         f"{100 * tw.sum(axis=1).mean():.0f}% | event mask: {c.entries_blocked} entries blocked "
-        f"pre-earnings, {len(c.failed_open)} tickers failed open -> {tw_path.name}"
+        f"pre-earnings, {len(c.failed_open)} tickers failed open | avg held rank "
+        f"{strategy.held_rank.mean():.2f} -> {tw_path.name}"
     )
 
     t0 = time.perf_counter()

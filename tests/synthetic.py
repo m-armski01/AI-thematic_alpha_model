@@ -161,6 +161,8 @@ def truncate(market: Market, t: pd.Timestamp) -> Market:
         dollar_volume=market.dollar_volume.loc[:t],
         macro=market.macro.loc[:t],
         currency_of=market.currency_of,
+        segment_of=market.segment_of,
+        earnings=market.earnings,
     )
 
 
@@ -285,9 +287,14 @@ def make_bundle(market: Market, benchmarks: list[str] | None = None):
 # Layer 1 values of every knob that later layers add. The golden regression test pins these
 # explicitly so it keeps reproducing Layer 1 after the YAML configs move to the chosen values.
 LAYER1_NEUTRAL: dict[str, dict] = {
-    "ranker": {"weighting": "conviction_tier"},
+    "ranker": {"weighting": "conviction_tier", "exit_rank": None},
     "macro_gate": {"enabled": True, "combination": "multiplicative"},
     "event_mask": {"enabled": True, "block_new_entries_only": True},
+}
+
+# The chosen (preregistered) values of the same knobs, for tests that must pass with them on.
+CHOSEN: dict[str, dict] = {
+    "ranker": {"weighting": "equal", "exit_rank": 8},
 }
 
 

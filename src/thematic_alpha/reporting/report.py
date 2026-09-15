@@ -117,7 +117,8 @@ def render_report(
         ],
         [
             "Ranker",
-            f"{config.ranker.method}, top {config.ranker.top_n}, {config.ranker.weighting}"
+            f"{config.ranker.method}, top {config.ranker.top_n} (exit rank "
+            f"{config.ranker.effective_exit_rank}), {config.ranker.weighting}"
             + (
                 f" (τ={config.ranker.softmax_temperature:g})"
                 if config.ranker.weighting == "softmax"
@@ -172,6 +173,16 @@ def render_report(
         f"{s['n_failed_open']} tickers without earnings dates failed open).",
         "",
     ]
+    if "held_rank_mean" in s:
+        lines += [
+            f"Average cross-sectional rank of the held names: **{fmt_num(s['held_rank_mean'])}** "
+            f"(exit rank {s['exit_rank']}, top {config.ranker.top_n}; plain "
+            f"top-{config.ranker.top_n} gives {(config.ranker.top_n + 1) / 2:.1f} by "
+            "construction). A higher value is the "
+            "signal-quality cost of the rank buffer: it holds names the ranker would otherwise "
+            "have replaced.",
+            "",
+        ]
 
     # --- headline metrics -------------------------------------------------------------------
     lines += ["## Headline results (net of costs)", ""]
