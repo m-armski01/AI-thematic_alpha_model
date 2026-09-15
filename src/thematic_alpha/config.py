@@ -31,6 +31,13 @@ class RunConfig(_Base):
 class DataConfig(_Base):
     max_cache_age_days: int = Field(ge=0)
     min_history_days: int = Field(gt=0)
+    # Download start (SPEC §5.2). run.start_date is the *backtest* start; features need warm-up.
+    history_start: str = "1998-01-01"
+    # |1-day return| above this is flagged in outputs/data_quality.md for manual review.
+    suspicious_return_threshold: float = Field(default=0.25, gt=0.0)
+    # FRED values keyed by observation date are typically published the next day. Shift macro
+    # series by this many sessions before any feature/gate sees them (conservative, no lookahead).
+    macro_publication_lag_days: int = Field(default=1, ge=0)
 
 
 class UniverseConfig(_Base):
@@ -77,6 +84,7 @@ class RankerConfig(_Base):
 
 class EventMaskConfig(_Base):
     enabled: bool = True
+    file: str = "data/reference/earnings_dates.csv"
     block_days_before_earnings: int = Field(ge=0)
     block_new_entries_only: bool = True
 
