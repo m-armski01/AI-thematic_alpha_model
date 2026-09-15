@@ -290,11 +290,13 @@ LAYER1_NEUTRAL: dict[str, dict] = {
     "ranker": {"weighting": "conviction_tier", "exit_rank": None},
     "macro_gate": {"enabled": True, "combination": "multiplicative"},
     "event_mask": {"enabled": True, "block_new_entries_only": True},
+    "turnover": {"position_band": 0.0},
 }
 
 # The chosen (preregistered) values of the same knobs, for tests that must pass with them on.
 CHOSEN: dict[str, dict] = {
     "ranker": {"weighting": "equal", "exit_rank": 8},
+    "turnover": {"position_band": 0.02},
 }
 
 

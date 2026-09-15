@@ -283,21 +283,31 @@ def run_backtests(
     dates = strategy.signal_dates
     end = config.run.end_date
 
-    def _run(close, open_, targets):
+    def _run(close, open_, targets, band: float = 0.0):
         return run_backtest(
-            close, targets, config.backtest, config.costs, open_, sessions, dates.min(), end
+            close,
+            targets,
+            config.backtest,
+            config.costs,
+            open_,
+            sessions,
+            dates.min(),
+            end,
+            position_band=band,
         )
 
+    # The position band is a strategy turnover control; benchmarks never get it.
+    band = config.turnover.position_band
     targets = {
-        STRATEGY: strategy.target_weights,
         "sp500": single_asset_targets(market, dates.min()),
         "equal_weight_bh": buy_and_hold_targets(features.eligible, dates),
         "naive_momentum": naive_momentum_targets(
             features.wide, features.eligible, dates, config.ranker.top_n
         ),
     }
-    results = {name: _run(close_base, open_base, tw) for name, tw in targets.items()}
-    results["strategy_local"] = _run(close_local, open_local, strategy.target_weights)
+    results = {STRATEGY: _run(close_base, open_base, strategy.target_weights, band)}
+    results.update({name: _run(close_base, open_base, tw) for name, tw in targets.items()})
+    results["strategy_local"] = _run(close_local, open_local, strategy.target_weights, band)
     for name in [STRATEGY, *BENCHMARK_ORDER]:
         r = results[name]
         logger.info(

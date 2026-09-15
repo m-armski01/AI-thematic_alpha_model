@@ -114,6 +114,14 @@ class SizingConfig(_Base):
     cash_floor: float = Field(ge=0.0, le=1.0)
 
 
+class TurnoverConfig(_Base):
+    """Turnover controls applied in the engine, to strategy runs only (benchmarks never)."""
+
+    # Held->held trades whose |target - drifted weight| is below this are skipped; the residual
+    # stays in cash. Full exits and new entries always trade. 0.0 = off (Layer 1).
+    position_band: float = Field(default=0.0, ge=0.0, lt=1.0)
+
+
 class BacktestConfig(_Base):
     rebalance: Literal["weekly", "monthly"] = "weekly"
     rebalance_day: Literal["monday", "tuesday", "wednesday", "thursday", "friday"] = "friday"
@@ -170,6 +178,7 @@ class Config(_Base):
     ranker: RankerConfig
     event_mask: EventMaskConfig
     sizing: SizingConfig
+    turnover: TurnoverConfig = TurnoverConfig()
     backtest: BacktestConfig
     costs: CostsConfig
     risk: RiskConfig

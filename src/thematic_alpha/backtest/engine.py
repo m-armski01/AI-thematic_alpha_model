@@ -6,6 +6,11 @@ primary-exchange sessions later at ``execution_price`` (open or close). Costs ar
 traded notional and paid from cash; buys are scaled down so cash never goes negative. No
 leverage, no shorting.
 
+Position no-trade band (``position_band`` > 0, strategy runs only): a held->held trade is skipped
+when the target is within the band of the *drifted* pre-trade weight at the execution price; the
+skipped residual stays in cash and nothing is renormalized. Full exits and new entries always
+trade.
+
 Approximation (documented): if a ticker's own exchange is closed on an execution date, it trades
 at its forward-filled price. A ticker whose price is NaN (not yet listed / real gap) cannot be
 traded that day; its target weight is left in cash.
@@ -85,6 +90,7 @@ def run_backtest(
     sessions: pd.DatetimeIndex | None = None,
     start: str | pd.Timestamp | None = None,
     end: str | pd.Timestamp | None = None,
+    position_band: float = 0.0,
 ) -> BacktestResult:
     px_close = prices_close.sort_index()
     tickers = list(px_close.columns)
@@ -122,6 +128,7 @@ def run_backtest(
     paid: dict[pd.Timestamp, float] = {}
     trade_rows: list[dict] = []
     skipped = 0
+    banded = 0
     prev_target = np.zeros(n)
 
     for i, d in enumerate(dates):
@@ -137,6 +144,11 @@ def run_backtest(
             current = np.where(tradable, shares * np.where(tradable, px, 0.0), 0.0)
             w_before = current / equity_pre if equity_pre > 0 else np.zeros(n)
             delta = np.where(tradable, w * equity_pre - current, 0.0)
+            if position_band > 0.0:
+                held_to_held = (current > 0.0) & (w > 0.0)
+                within = np.abs(w - w_before) < position_band
+                delta[held_to_held & within] = 0.0
+                banded += int((held_to_held & within & (delta == 0.0)).sum())
             # Ignore float-noise "trades" (relative to equity) so a hold really is a hold.
             delta[np.abs(delta) < NOISE * max(equity_pre, 1.0)] = 0.0
             buys, sells = delta[delta > 0].sum(), -delta[delta < 0].sum()
@@ -186,6 +198,12 @@ def run_backtest(
     if skipped:
         logger.warning(
             "%d target weights fell on untradeable (NaN-price) days; left in cash.", skipped
+        )
+    if position_band > 0.0:
+        logger.info(
+            "position band %.3f: %d held->held trades skipped (residual left in cash).",
+            position_band,
+            banded,
         )
 
     equity_s = pd.Series(equity, index=dates, name="equity")

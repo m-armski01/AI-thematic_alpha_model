@@ -17,6 +17,7 @@
 | Macro gate | VIX>25→×0.5; 10y +40bp/21d→×0.7; WTI +20%/21d→×0.85; floor 0.3; multiplicative |
 | Event mask | block new exposure 3 sessions before earnings (on) |
 | Sizing | max weight 0.35, cash floor 0; house-money rule: Layer 2 (not applied) |
+| Turnover control | position no-trade band 2 pp (on; strategy only) |
 | Min history | 252 sessions |
 | Macro publication lag | 1 session |
 
@@ -36,35 +37,35 @@ Average cross-sectional rank of the held names: **3.81** (exit rank 8, top 5; pl
 
 | Metric | Strategy | S&P 500 (SPY) B&H | Equal-weight B&H (universe) | Naive momentum (top-N) |
 |---|---:|---:|---:|---:|
-| Total return | 4958.1% | 364.5% | 7474.4% | 6780.2% |
-| CAGR | 38.6% | 13.6% | 43.3% | 42.2% |
-| Annualized volatility | 30.9% | 18.4% | 31.2% | 34.0% |
+| Total return | 4791.7% | 364.5% | 7474.4% | 6780.2% |
+| CAGR | 38.2% | 13.6% | 43.3% | 42.2% |
+| Annualized volatility | 30.7% | 18.4% | 31.2% | 34.0% |
 | Sharpe (excess over DTB3) | 1.14 | 0.67 | 1.24 | 1.14 |
-| Sortino (MAR 0) | 1.68 | 0.95 | 1.82 | 1.67 |
-| Max drawdown | -45.4% | -33.5% | -46.7% | -55.2% |
-| Max DD peak | 2024-06-18 | 2020-02-19 | 2021-12-27 | 2022-01-03 |
-| Max DD trough | 2025-04-21 | 2020-03-23 | 2022-12-28 | 2022-12-28 |
-| Max DD recovery | 2025-08-28 | 2021-01-07 | 2023-07-05 | 2024-02-09 |
-| Max DD duration (days) | 436 | 323 | 555 | 767 |
-| Calmar | 0.85 | 0.41 | 0.93 | 0.76 |
-| Alpha vs S&P 500 (ann.) | 22.2% | -0.1% | 22.6% | 23.0% |
-| Beta vs S&P 500 | 1.06 | 1.00 | 1.30 | 1.28 |
+| Sortino (MAR 0) | 1.67 | 0.95 | 1.82 | 1.67 |
+| Max drawdown | -45.6% | -33.5% | -46.7% | -55.2% |
+| Max DD peak | 2021-11-25 | 2020-02-19 | 2021-12-27 | 2022-01-03 |
+| Max DD trough | 2022-12-28 | 2020-03-23 | 2022-12-28 | 2022-12-28 |
+| Max DD recovery | 2023-06-30 | 2021-01-07 | 2023-07-05 | 2024-02-09 |
+| Max DD duration (days) | 582 | 323 | 555 | 767 |
+| Calmar | 0.84 | 0.41 | 0.93 | 0.76 |
+| Alpha vs S&P 500 (ann.) | 21.9% | -0.1% | 22.6% | 23.0% |
+| Beta vs S&P 500 | 1.05 | 1.00 | 1.30 | 1.28 |
 | Historical VaR 95% (daily) | 3.0% | 1.7% | 3.2% | 3.3% |
-| Historical VaR 99% (daily) | 5.3% | 3.3% | 5.3% | 5.8% |
-| Parametric VaR 95% (daily) | 3.1% | 1.8% | 3.1% | 3.4% |
-| Parametric VaR 99% (daily) | 4.4% | 2.6% | 4.4% | 4.8% |
-| CVaR / ES 95% (daily) | 4.6% | 2.8% | 4.6% | 5.0% |
-| Excess kurtosis (daily) | 3.59 | 11.29 | 3.70 | 3.42 |
-| Hit rate (weekly periods) | 59.8% | 60.3% | 61.7% | 60.4% |
-| Average win (weekly period) | 3.5% | 1.7% | 3.5% | 3.8% |
+| Historical VaR 99% (daily) | 5.2% | 3.3% | 5.3% | 5.8% |
+| Parametric VaR 95% (daily) | 3.0% | 1.8% | 3.1% | 3.4% |
+| Parametric VaR 99% (daily) | 4.3% | 2.6% | 4.4% | 4.8% |
+| CVaR / ES 95% (daily) | 4.5% | 2.8% | 4.6% | 5.0% |
+| Excess kurtosis (daily) | 3.58 | 11.29 | 3.70 | 3.42 |
+| Hit rate (weekly periods) | 59.9% | 60.3% | 61.7% | 60.4% |
+| Average win (weekly period) | 3.4% | 1.7% | 3.5% | 3.8% |
 | Average loss (weekly period) | -3.3% | -1.8% | -3.5% | -3.7% |
-| Annualized turnover | 7.44 | 0.08 | 0.62 | 15.39 |
-| Total costs paid | 5,667.74 | 7.99 | 1,229.48 | 13,034.81 |
-| Costs as % of final equity | 1.12% | 0.02% | 0.16% | 1.89% |
+| Annualized turnover | 6.50 | 0.08 | 0.62 | 15.39 |
+| Total costs paid | 4,896.76 | 7.99 | 1,229.48 | 13,034.81 |
+| Costs as % of final equity | 1.00% | 0.02% | 0.16% | 1.89% |
 
-Against equal-weight buy-and-hold of the same basket the strategy's CAGR is lower (38.6% vs 43.3%), its Sharpe is lower (1.14 vs 1.24), and its maximum drawdown is shallower (-45.4% vs -46.7%). The rules gave up total return relative to holding the basket in exchange for a better risk-adjusted profile.
+Against equal-weight buy-and-hold of the same basket the strategy's CAGR is lower (38.2% vs 43.3%), its Sharpe is lower (1.14 vs 1.24), and its maximum drawdown is shallower (-45.6% vs -46.7%). The rules gave up total return relative to holding the basket in exchange for a better risk-adjusted profile.
 
-VaR note: parametric (normal) 99% VaR is 4.4% against a historical 5.3%; daily excess kurtosis is 3.59. The normal assumption understates the tail.
+VaR note: parametric (normal) 99% VaR is 4.3% against a historical 5.2%; daily excess kurtosis is 3.58. The normal assumption understates the tail.
 
 ## Turnover attribution
 
@@ -72,12 +73,12 @@ Annualized turnover split by cause (see `backtest/attribution.py`): **membership
 
 | Run | membership | drift | gate | reweight | total |
 |---|---:|---:|---:|---:|---:|
-| Strategy | 3.60 | 1.35 | 2.30 | 0.20 | 7.44 |
+| Strategy | 3.49 | 0.57 | 2.24 | 0.19 | 6.50 |
 | S&P 500 (SPY) B&H | 0.08 | 0.00 | 0.00 | 0.00 | 0.08 |
 | Equal-weight B&H (universe) | 0.27 | 0.21 | 0.00 | 0.14 | 0.62 |
 | Naive momentum (top-N) | 13.96 | 1.43 | 0.00 | 0.00 | 15.39 |
 
-Macro gate: 88 state transitions over 611 signal dates (7.3 per year); 27 of them reverse within 1 signal date and 34 within 2. The gate accounts for 30.8% of the strategy's turnover.
+Macro gate: 88 state transitions over 611 signal dates (7.3 per year); 27 of them reverse within 1 signal date and 34 within 2. The gate accounts for 34.4% of the strategy's turnover.
 
 ![turnover by cause](figures/turnover_by_cause.png)
 
@@ -85,10 +86,10 @@ Macro gate: 88 state transitions over 611 signal dates (7.3 per year); 27 of the
 
 |  | In EUR | In local currencies |
 |---|---:|---:|
-| Total return | 4958.1% | 4601.6% |
-| CAGR | 38.6% | 37.7% |
+| Total return | 4791.7% | 4494.0% |
+| CAGR | 38.2% | 37.5% |
 
-FX contribution: 0.8% per year of CAGR; in total the EUR result differs from the local-currency result by 356.5% of initial capital. Positions are unhedged USD and KRW exposure held by a EUR investor.
+FX contribution: 0.7% per year of CAGR; in total the EUR result differs from the local-currency result by 297.7% of initial capital. Positions are unhedged USD and KRW exposure held by a EUR investor.
 
 ## Largest drawdowns
 
@@ -96,11 +97,11 @@ FX contribution: 0.8% per year of CAGR; in total the EUR result differs from the
 
 | Depth | Peak | Trough | Recovery | Duration (days) |
 |---|---:|---:|---:|---:|
-| -45.4% | 2024-06-18 | 2025-04-21 | 2025-08-28 | 436 |
-| -45.3% | 2021-11-25 | 2022-12-28 | 2023-06-22 | 574 |
-| -31.0% | 2026-06-22 | 2026-07-29 | not recovered | 81 |
-| -24.7% | 2015-12-01 | 2016-02-11 | 2016-07-20 | 232 |
-| -24.6% | 2020-02-19 | 2020-03-16 | 2020-08-28 | 191 |
+| -45.6% | 2021-11-25 | 2022-12-28 | 2023-06-30 | 582 |
+| -45.1% | 2024-06-18 | 2025-04-21 | 2025-08-28 | 436 |
+| -30.5% | 2026-06-02 | 2026-07-29 | not recovered | 101 |
+| -24.3% | 2015-12-01 | 2016-02-11 | 2016-07-20 | 232 |
+| -24.3% | 2020-02-19 | 2020-03-16 | 2020-09-01 | 195 |
 
 **Equal-weight B&H (universe)**
 

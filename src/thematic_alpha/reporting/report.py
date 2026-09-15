@@ -144,6 +144,11 @@ def render_report(
             f"max weight {config.sizing.max_position_weight:g}, cash floor "
             f"{config.sizing.cash_floor:g}; house-money rule: Layer 2 (not applied)",
         ],
+        [
+            "Turnover control",
+            f"position no-trade band {100 * config.turnover.position_band:g} pp "
+            f"({'on' if config.turnover.position_band > 0 else 'off'}; strategy only)",
+        ],
         ["Min history", f"{config.data.min_history_days} sessions"],
         ["Macro publication lag", f"{config.data.macro_publication_lag_days} session"],
     ]

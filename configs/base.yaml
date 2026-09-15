@@ -58,6 +58,9 @@ sizing:
   max_position_weight: 0.35
   cash_floor: 0.0
 
+turnover:
+  position_band: 0.02            # skip held->held trades within 2pp of the drifted weight (L1: 0.0)
+
 backtest:
   rebalance: "weekly"            # weekly | monthly
   rebalance_day: "friday"
