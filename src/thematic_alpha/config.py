@@ -77,6 +77,10 @@ class MacroGateConfig(_Base):
     vix_release_threshold: float | None = None
     yield_release_threshold: float | None = None
     oil_release_threshold: float | None = None
+    # (c) Evaluation cadence. "weekly": the gate is sampled on every signal date (Layer 1).
+    # "monthly": sampled on the last weekly signal date of each month (plus the first signal
+    # date) and held constant on the weekly signal dates in between; ranking stays weekly.
+    evaluation: Literal["weekly", "monthly"] = "weekly"
 
     @model_validator(mode="after")
     def _release_not_above_engage(self) -> MacroGateConfig:

@@ -137,13 +137,30 @@ class GateState:
         return self.exposure if self.action == "scale" else self.risk_off
 
 
+def evaluation_dates(signal_dates: pd.DatetimeIndex, evaluation: str) -> pd.DatetimeIndex:
+    """Signal dates on which the gate is sampled: all of them (weekly) or the last signal date
+    of each calendar month plus the first signal date (monthly)."""
+    if evaluation == "weekly" or len(signal_dates) == 0:
+        return signal_dates
+    ser = pd.Series(signal_dates, index=signal_dates)
+    monthly = ser.groupby([signal_dates.year, signal_dates.month]).last()
+    return pd.DatetimeIndex(sorted({signal_dates[0], *monthly.to_numpy()}))
+
+
 def applied_gate(
     gate_daily: pd.DataFrame, signal_dates: pd.DatetimeIndex, cfg: MacroGateConfig
 ) -> GateState:
-    """Sample the daily gate on every signal date."""
-    exposure = gate_daily["exposure"].reindex(signal_dates).fillna(1.0).rename("exposure")
-    risk_off = gate_daily["risk_off"].reindex(signal_dates).fillna(False).astype(bool)
-    evaluated = pd.Series(True, index=signal_dates, name="evaluated")
+    """Sample the daily gate on the evaluation dates and hold it until the next one."""
+    eval_dates = evaluation_dates(signal_dates, cfg.evaluation)
+    evaluated = pd.Series(signal_dates.isin(eval_dates), index=signal_dates, name="evaluated")
+
+    def _hold(col: str, fill):
+        sampled = gate_daily[col].reindex(eval_dates).fillna(fill)
+        # State on a signal date = state at the latest evaluation date <= it (ffill, no bfill).
+        return sampled.reindex(signal_dates.union(eval_dates)).ffill().reindex(signal_dates)
+
+    exposure = _hold("exposure", 1.0).fillna(1.0).rename("exposure")
+    risk_off = _hold("risk_off", False).fillna(False).astype(bool)
     if cfg.action == "scale":
         risk_off = pd.Series(False, index=signal_dates, name="risk_off")
     else:

@@ -296,6 +296,7 @@ LAYER1_NEUTRAL: dict[str, dict] = {
         "vix_release_threshold": None,
         "yield_release_threshold": None,
         "oil_release_threshold": None,
+        "evaluation": "weekly",
     },
     "event_mask": {"enabled": True, "block_new_entries_only": True},
     "turnover": {"position_band": 0.0},
@@ -311,6 +312,7 @@ CHOSEN: dict[str, dict] = {
         "vix_release_threshold": 20.0,
         "yield_release_threshold": 0.32,
         "oil_release_threshold": 0.16,
+        "evaluation": "monthly",
     },
 }
 

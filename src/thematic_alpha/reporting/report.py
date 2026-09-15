@@ -61,17 +61,18 @@ def _gate_config_text(config: Config) -> str:
         f"WTI +{_band(g.oil_change_threshold, 'oil', lambda v: f'{100 * v:.0f}%')}/"
         f"{g.oil_change_window}d"
     )
+    cadence = f"evaluated {g.evaluation}"
     if not g.enabled:
         return f"disabled ({triggers})"
     if g.action == "scale":
         return (
             f"scale: {triggers} → ×{g.vix_scale_factor:g} / ×{g.yield_scale_factor:g} / "
-            f"×{g.oil_scale_factor:g}; floor {g.min_exposure:g}; {g.combination}"
+            f"×{g.oil_scale_factor:g}; floor {g.min_exposure:g}; {g.combination}; {cadence}"
         )
     exempt = ", ".join(g.block_exempt_segments) or "none"
     return (
         f"block increases while any sub-gate is engaged ({triggers}); exempt segments: {exempt}; "
-        "scale factors and floor unused"
+        f"scale factors and floor unused; {cadence}"
     )
 
 
@@ -202,6 +203,12 @@ def render_report(
             f"{s['gate_blocked']} increases or entries blocked (that weight stayed in cash; "
             f"exempt names: {exempt}). The scale factors and `min_exposure` are unused in "
             "this mode."
+        )
+    if s.get("n_evaluated") is not None and s["n_evaluated"] < s["n_signal_dates"]:
+        gate_text += (
+            f" The gate was evaluated on {s['n_evaluated']} of the {s['n_signal_dates']} signal "
+            f"dates ({config.macro_gate.evaluation}) and held constant in between; ranking "
+            "stayed weekly."
         )
     lines += [
         f"{s['n_signal_dates']} signal dates. {gate_text} Event mask: "

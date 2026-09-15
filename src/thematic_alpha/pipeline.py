@@ -550,6 +550,7 @@ def write_report(
             "exit_rank": config.ranker.effective_exit_rank,
             "gate_action": strategy.applied.action,
             "n_risk_off": int(strategy.applied.risk_off.sum()),
+            "n_evaluated": int(strategy.applied.evaluated.sum()),
             "gate_blocked": c.gate_blocked,
             "exempt": [
                 t

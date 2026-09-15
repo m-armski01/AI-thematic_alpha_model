@@ -74,7 +74,9 @@ def test_block_mode_is_a_pure_history_function_and_sums_below_one():
 
 
 def test_risk_off_is_any_subgate_engaged_and_fails_open_on_nan():
-    cfg = make_config().macro_gate.model_copy(update={"action": "block_increases"})
+    cfg = make_config().macro_gate.model_copy(
+        update={"action": "block_increases", "evaluation": "weekly"}
+    )
     idx = pd.bdate_range("2024-01-01", periods=4)
     feats = pd.DataFrame(
         {

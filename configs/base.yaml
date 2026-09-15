@@ -39,6 +39,7 @@ macro_gate:
   combination: "multiplicative"  # multiplicative | min | average
   action: "block_increases"      # scale | block_increases (L1: scale)
   block_exempt_segments: ["defensive"]   # segments that trade freely while risk-off (none here)
+  evaluation: "monthly"          # weekly | monthly: gate sampled on the last signal date of each month (L1: weekly)
 
 ranker:
   method: "momentum_zscore"      # momentum_zscore | equal_weight | ml
