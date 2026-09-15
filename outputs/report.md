@@ -32,28 +32,28 @@
 
 ![equity curves](figures/equity_curves.png)
 
-| Metric | Strategy | S&P 500 (^GSPC) B&H | Equal-weight B&H (universe) | Naive momentum (top-N) |
+| Metric | Strategy | S&P 500 (SPY) B&H | Equal-weight B&H (universe) | Naive momentum (top-N) |
 |---|---:|---:|---:|---:|
-| Total return | 4353.6% | 282.0% | 7474.4% | 6780.2% |
-| CAGR | 37.1% | 11.8% | 43.3% | 42.2% |
-| Annualized volatility | 32.6% | 18.5% | 31.2% | 34.0% |
-| Sharpe (excess over DTB3) | 1.07 | 0.58 | 1.24 | 1.14 |
-| Sortino (MAR 0) | 1.56 | 0.82 | 1.82 | 1.67 |
-| Max drawdown | -50.8% | -33.7% | -46.7% | -55.2% |
+| Total return | 4353.6% | 364.5% | 7474.4% | 6780.2% |
+| CAGR | 37.1% | 13.6% | 43.3% | 42.2% |
+| Annualized volatility | 32.6% | 18.4% | 31.2% | 34.0% |
+| Sharpe (excess over DTB3) | 1.07 | 0.67 | 1.24 | 1.14 |
+| Sortino (MAR 0) | 1.56 | 0.95 | 1.82 | 1.67 |
+| Max drawdown | -50.8% | -33.5% | -46.7% | -55.2% |
 | Max DD peak | 2021-11-25 | 2020-02-19 | 2021-12-27 | 2022-01-03 |
 | Max DD trough | 2022-12-28 | 2020-03-23 | 2022-12-28 | 2022-12-28 |
-| Max DD recovery | 2023-07-03 | 2021-01-20 | 2023-07-05 | 2024-02-09 |
-| Max DD duration (days) | 585 | 336 | 555 | 767 |
-| Calmar | 0.73 | 0.35 | 0.93 | 0.76 |
-| Alpha vs S&P 500 (ann.) | 23.4% | -0.1% | 24.7% | 25.0% |
-| Beta vs S&P 500 | 1.05 | 1.00 | 1.29 | 1.27 |
+| Max DD recovery | 2023-07-03 | 2021-01-07 | 2023-07-05 | 2024-02-09 |
+| Max DD duration (days) | 585 | 323 | 555 | 767 |
+| Calmar | 0.73 | 0.41 | 0.93 | 0.76 |
+| Alpha vs S&P 500 (ann.) | 21.7% | -0.1% | 22.6% | 23.0% |
+| Beta vs S&P 500 | 1.06 | 1.00 | 1.30 | 1.28 |
 | Historical VaR 95% (daily) | 3.1% | 1.7% | 3.2% | 3.3% |
-| Historical VaR 99% (daily) | 5.8% | 3.4% | 5.3% | 5.8% |
-| Parametric VaR 95% (daily) | 3.2% | 1.9% | 3.1% | 3.4% |
-| Parametric VaR 99% (daily) | 4.6% | 2.7% | 4.4% | 4.8% |
+| Historical VaR 99% (daily) | 5.8% | 3.3% | 5.3% | 5.8% |
+| Parametric VaR 95% (daily) | 3.2% | 1.8% | 3.1% | 3.4% |
+| Parametric VaR 99% (daily) | 4.6% | 2.6% | 4.4% | 4.8% |
 | CVaR / ES 95% (daily) | 4.8% | 2.8% | 4.6% | 5.0% |
-| Excess kurtosis (daily) | 3.72 | 12.39 | 3.70 | 3.42 |
-| Hit rate (weekly periods) | 59.9% | 59.8% | 61.7% | 60.4% |
+| Excess kurtosis (daily) | 3.72 | 11.29 | 3.70 | 3.42 |
+| Hit rate (weekly periods) | 59.9% | 60.3% | 61.7% | 60.4% |
 | Average win (weekly period) | 3.6% | 1.7% | 3.5% | 3.8% |
 | Average loss (weekly period) | -3.6% | -1.8% | -3.5% | -3.7% |
 | Annualized turnover | 18.32 | 0.08 | 0.62 | 15.39 |

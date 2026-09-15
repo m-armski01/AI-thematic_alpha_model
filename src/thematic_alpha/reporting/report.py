@@ -22,7 +22,7 @@ from thematic_alpha.reporting.tables import (
 
 LABELS = {
     "strategy": "Strategy",
-    "sp500": "S&P 500 (^GSPC) B&H",
+    "sp500": "S&P 500 (SPY) B&H",
     "equal_weight_bh": "Equal-weight B&H (universe)",
     "naive_momentum": "Naive momentum (top-N)",
 }

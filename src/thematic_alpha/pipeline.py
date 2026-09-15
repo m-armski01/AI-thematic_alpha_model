@@ -174,6 +174,7 @@ def build_features(bundle: DataBundle, config: Config) -> FeaturePanel:
         master=bundle.master,
         tickers=[t for t in bundle.universe.tickers if t in bundle.panel.tickers],
         config=config,
+        market_ticker=config.universe.benchmarks[0],
     )
     last = fp.eligible.index[-1]
     logger.info(

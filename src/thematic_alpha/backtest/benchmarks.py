@@ -1,6 +1,7 @@
 """Benchmarks (SPEC §1D), all run through the same engine with identical cost treatment:
 
-1. ``sp500``           — ^GSPC buy-and-hold (one purchase, then untouched).
+1. ``sp500``           — ``benchmarks[0]`` buy-and-hold (SPY, dividend-adjusted; one purchase,
+                         then untouched). Layer 1 used ^GSPC, a price-return index.
 2. ``equal_weight_bh`` — equal-weight buy-and-hold of the universe. The critical benchmark.
                          Re-equalized only on signal dates where the eligible set changes
                          (a new listing crossing ``min_history_days``); otherwise untouched.

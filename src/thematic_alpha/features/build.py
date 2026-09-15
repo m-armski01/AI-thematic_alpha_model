@@ -71,8 +71,9 @@ def build_feature_panel(
     master: pd.DatetimeIndex,
     tickers: list[str],
     config: Config,
-    market_ticker: str = "^GSPC",
+    market_ticker: str,
 ) -> FeaturePanel:
+    """``market_ticker`` is the beta reference: ``universe.benchmarks[0]`` in the pipeline."""
     if market_ticker not in prices.adj_close.columns:
         raise ValueError(f"market ticker {market_ticker!r} is not in the price panel")
     spec = PriceFeatureSpec(

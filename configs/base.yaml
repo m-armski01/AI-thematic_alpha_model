@@ -14,7 +14,7 @@ data:
 
 universe:
   file: "data/reference/universe.csv"
-  benchmarks: ["^GSPC", "QQQ", "SOXX"]
+  benchmarks: ["SPY", "QQQ", "SOXX"]   # [0] is the market: beta, features, S&P B&H
 
 features:
   momentum_windows: [21, 63, 126, 252]
