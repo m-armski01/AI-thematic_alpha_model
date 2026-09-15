@@ -1,0 +1,18 @@
+ticker,name,segment,exchange,currency,regime_start_date,notes
+XLK,Technology Select Sector SPDR,sector,NYSE Arca,USD,,
+XLF,Financial Select Sector SPDR,sector,NYSE Arca,USD,,
+XLE,Energy Select Sector SPDR,sector,NYSE Arca,USD,,
+XLV,Health Care Select Sector SPDR,sector,NYSE Arca,USD,,
+XLY,Consumer Discretionary Select Sector SPDR,sector,NYSE Arca,USD,,
+XLP,Consumer Staples Select Sector SPDR,sector,NYSE Arca,USD,,
+XLI,Industrial Select Sector SPDR,sector,NYSE Arca,USD,,
+XLU,Utilities Select Sector SPDR,sector,NYSE Arca,USD,,
+XLB,Materials Select Sector SPDR,sector,NYSE Arca,USD,,
+XLRE,Real Estate Select Sector SPDR,sector,NYSE Arca,USD,,launched 2015-10: enters the cross-section mid-window once it has 252 sessions
+XLC,Communication Services Select Sector SPDR,sector,NYSE Arca,USD,,launched 2018-06: enters the cross-section mid-window once it has 252 sessions
+SMH,VanEck Semiconductor ETF,thematic,NASDAQ,USD,,
+IGV,iShares Expanded Tech-Software Sector ETF,thematic,Cboe BZX,USD,,
+IBB,iShares Biotechnology ETF,thematic,NASDAQ,USD,,
+ITA,iShares U.S. Aerospace & Defense ETF,thematic,Cboe BZX,USD,,
+TLT,iShares 20+ Year Treasury Bond ETF,defensive,NASDAQ,USD,,exempt from the gate block (block_exempt_segments: defensive)
+GLD,SPDR Gold Shares,defensive,NYSE Arca,USD,,exempt from the gate block (block_exempt_segments: defensive)

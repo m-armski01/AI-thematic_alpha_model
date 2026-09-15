@@ -104,3 +104,30 @@ def test_fx_contribution_zero_when_identical():
     res = _result()
     out = m.fx_contribution(res, res)
     assert out["fx_contribution_total"] == 0.0 and out["fx_contribution_cagr"] == 0.0
+
+
+def test_metrics_annualize_on_the_market_calendar():
+    """A second exchange's extra days must not inflate the year count or dilute returns."""
+    from thematic_alpha.backtest.engine import run_backtest
+
+    cfg = make_config()
+    bt = cfg.backtest.model_copy(update={"execution_lag_days": 0, "execution_price": "close"})
+    zero = cfg.costs.model_copy(update={"bps_per_side": 0.0, "slippage_bps": 0.0, "flat_fee": 0.0})
+    nyse = pd.bdate_range("2024-01-01", periods=504)
+    extra = nyse[nyse.weekday == 4][::5] + pd.Timedelta(days=1)  # Saturdays: "KRX-only" days
+    master = nyse.union(extra)
+    close = pd.DataFrame({"A": 100 * (1.001 ** np.arange(len(nyse)))}, index=nyse)
+    close = close.reindex(master).ffill()
+    tw = pd.DataFrame({"A": [1.0]}, index=[nyse[0]])
+    on_master = run_backtest(close, tw, bt, zero, sessions=master)
+    on_market = run_backtest(close, tw, bt, zero, sessions=nyse)
+    m_master = m.compute_metrics(
+        on_master, pd.Series(0.0, index=master), pd.Series(0.0, index=master), cfg.risk
+    )
+    m_market = m.compute_metrics(
+        on_market, pd.Series(0.0, index=nyse), pd.Series(0.0, index=nyse), cfg.risk
+    )
+    assert m_market["n_days"] == len(nyse) and m_master["n_days"] == len(master)
+    assert m_market["cagr"] == pytest.approx(1.001 ** (503 / 2) - 1, rel=1e-9)  # 503 steps, 2y
+    assert m_master["cagr"] < m_market["cagr"]  # the master-calendar count understates it
+    assert on_market.final_equity == on_master.final_equity  # the engine itself is unchanged

@@ -154,13 +154,14 @@ def applied_gate(
     eval_dates = evaluation_dates(signal_dates, cfg.evaluation)
     evaluated = pd.Series(signal_dates.isin(eval_dates), index=signal_dates, name="evaluated")
 
-    def _hold(col: str, fill):
-        sampled = gate_daily[col].reindex(eval_dates).fillna(fill)
+    def _hold(col: str, fill: float) -> pd.Series:
+        sampled = gate_daily[col].astype(float).reindex(eval_dates).fillna(fill)
         # State on a signal date = state at the latest evaluation date <= it (ffill, no bfill).
-        return sampled.reindex(signal_dates.union(eval_dates)).ffill().reindex(signal_dates)
+        held = sampled.reindex(signal_dates.union(eval_dates)).ffill().reindex(signal_dates)
+        return held.fillna(fill)
 
-    exposure = _hold("exposure", 1.0).fillna(1.0).rename("exposure")
-    risk_off = _hold("risk_off", False).fillna(False).astype(bool)
+    exposure = _hold("exposure", 1.0).rename("exposure")
+    risk_off = _hold("risk_off", 0.0) > 0.5
     if cfg.action == "scale":
         risk_off = pd.Series(False, index=signal_dates, name="risk_off")
     else:

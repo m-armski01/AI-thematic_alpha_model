@@ -105,7 +105,8 @@ def attribute_trades(result: BacktestResult, p: pd.DataFrame, q: pd.DataFrame) -
 
 
 def years_of(result: BacktestResult) -> float:
-    return len(result.daily_returns) / PERIODS
+    """Years on the market calendar, the same year count the metrics annualize with."""
+    return len(result.on_market_calendar()[1]) / PERIODS
 
 
 def turnover_by_cause(attributed: pd.DataFrame, years: float) -> pd.Series:

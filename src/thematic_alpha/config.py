@@ -38,11 +38,17 @@ class DataConfig(_Base):
     # FRED values keyed by observation date are typically published the next day. Shift macro
     # series by this many sessions before any feature/gate sees them (conservative, no lookahead).
     macro_publication_lag_days: int = Field(default=1, ge=0)
+    # Liquidity screen (base currency): a name is eligible only once its 21-day average daily
+    # traded value is at least this. 0.0 = off (Layer 1); applied only when > 0.
+    min_dollar_volume_21d: float = Field(default=0.0, ge=0.0)
 
 
 class UniverseConfig(_Base):
     file: str
     benchmarks: list[str]
+    # Report framing only: "hindsight" prints the hindsight-bias paragraph; "point_in_time"
+    # states how the universe was defined and the residual ETF-delisting bias.
+    selection: Literal["hindsight", "point_in_time"] = "hindsight"
 
 
 class FeaturesConfig(_Base):

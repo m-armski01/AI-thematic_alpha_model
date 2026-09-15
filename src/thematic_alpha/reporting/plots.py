@@ -237,3 +237,41 @@ def turnover_by_cause(
     for text in leg.get_texts():
         text.set_color(INK_2)
     return _save(fig, path)
+
+
+def universe_composition(eligible: pd.DataFrame, path: Path) -> Path:
+    """Eligibility strip per ticker (top) and the count of eligible names (bottom)."""
+    fig, (ax1, ax2) = plt.subplots(
+        2,
+        1,
+        figsize=(9, 0.28 * len(eligible.columns) + 3.6),
+        sharex=True,
+        gridspec_kw={"height_ratios": [max(len(eligible.columns), 4), 4]},
+    )
+    fig.patch.set_facecolor(SURFACE)
+    tickers = list(eligible.columns)
+    idx = eligible.index
+    for i, t in enumerate(tickers):
+        col = eligible[t].to_numpy(dtype=bool)
+        start = None
+        for k, on in enumerate([*col, False]):
+            if on and start is None:
+                start = k
+            elif not on and start is not None:
+                x0 = idx[start]
+                x1 = idx[min(k, len(idx) - 1)]
+                ax1.barh(i, x1 - x0, left=x0, height=0.6, color=SERIES[0], linewidth=0)
+                start = None
+    ax1.set_yticks(range(len(tickers)))
+    ax1.set_yticklabels(tickers, fontsize=8)
+    ax1.invert_yaxis()
+    ax1.set_ylim(len(tickers) - 0.5, -0.5)
+    _style(ax1, "Eligible (in the cross-section)")
+    ax1.grid(False, axis="y")
+    _title(ax1, "Universe composition over time")
+    count = eligible.sum(axis=1)
+    ax2.step(idx, count, where="post", color=SERIES[0], linewidth=LINE_W)
+    ax2.fill_between(idx, count, 0, step="post", color=SERIES[0], alpha=0.10)
+    ax2.set_ylim(0, len(tickers) + 0.5)
+    _style(ax2, "Eligible names")
+    return _save(fig, path)

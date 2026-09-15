@@ -61,6 +61,20 @@ class BacktestResult:
     execution_dates: pd.DatetimeIndex
     signal_to_execution: pd.Series | None = None  # signal date -> execution date actually run
     target_weights: pd.DataFrame | None = None  # the targets the engine was given (signal dates)
+    # The primary (market) exchange's sessions. Metrics are annualized on this calendar so a
+    # universe with a second exchange (NYSE ∪ KRX master calendar) is measured over the same
+    # 252-day year as a single-calendar universe; the equity curve itself stays daily on the
+    # master calendar.
+    market_sessions: pd.DatetimeIndex | None = None
+
+    def on_market_calendar(self) -> tuple[pd.Series, pd.Series]:
+        """(equity, simple daily returns) restricted to the market's sessions."""
+        equity = self.equity_curve
+        if self.market_sessions is not None:
+            equity = equity[equity.index.isin(self.market_sessions)]
+        prev = np.concatenate([[self.initial_capital], equity.to_numpy()[:-1]])
+        returns = pd.Series(equity.to_numpy() / prev - 1.0, index=equity.index, name="ret")
+        return equity, returns
 
     @property
     def total_costs(self) -> float:
@@ -225,4 +239,5 @@ def run_backtest(
         execution_dates=exec_idx,
         signal_to_execution=executed,
         target_weights=tw,
+        market_sessions=pd.DatetimeIndex(sessions),
     )

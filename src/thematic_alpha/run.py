@@ -97,7 +97,8 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
     t0 = time.perf_counter()
     features = pipeline.build_features(bundle, config)
     t_feat = time.perf_counter() - t0
-    feat_path = root / "outputs" / "feature_panel.parquet"
+    out_dir = pipeline.output_dir(root, config)
+    feat_path = out_dir / "feature_panel.parquet"
     features.tidy.to_parquet(feat_path)
     last = features.dates[-1]
     print(
@@ -108,15 +109,20 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
 
     strategy = pipeline.build_strategy(bundle, features, config, root)
     tw = strategy.target_weights
-    tw_path = root / "outputs" / "target_weights.csv"
+    tw_path = out_dir / "target_weights.csv"
     tw.round(6).to_csv(tw_path)
     c = strategy.composed
     print(
         f"[Layer 1C] {len(strategy.signal_dates)} signal dates | exposure mean "
         f"{c.exposure.mean():.2f} (min {c.exposure.min():.2f}) | avg invested "
-        f"{100 * tw.sum(axis=1).mean():.0f}% | event mask: {c.entries_blocked} entries blocked "
-        f"pre-earnings, {len(c.failed_open)} tickers failed open | avg held rank "
-        f"{strategy.held_rank.mean():.2f} -> {tw_path.name}"
+        f"{100 * tw.sum(axis=1).mean():.0f}% | event mask: "
+        + (
+            f"{c.entries_blocked} entries blocked pre-earnings, {len(c.failed_open)} tickers "
+            "failed open"
+            if config.event_mask.enabled
+            else "disabled"
+        )
+        + f" | avg held rank {strategy.held_rank.mean():.2f} -> {tw_path.name}"
     )
 
     t0 = time.perf_counter()

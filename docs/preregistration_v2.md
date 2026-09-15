@@ -66,6 +66,18 @@ Reported per row: CAGR, Sharpe, max drawdown, annual turnover and turnover by ca
 of final equity, average held rank, gate transitions per year, average cash. Nothing is promoted
 from the sensitivity or ablation rows into the chosen config after the run.
 
+## Measurement changes (not parameters)
+
+- 2026-09-15 — **Annualization on the market calendar.** Layer 1 annualized every metric over
+  the master calendar (NYSE ∪ KRX sessions), so the 12-stock control counted 12.03 "years" of
+  252 days over a window in which the ETF universe (NYSE only) counts 11.67, and USD names
+  carried 91 zero-return days. Metrics, drawdowns, rolling statistics and the attribution
+  year count now use the primary exchange's sessions for every run (`BacktestResult.
+  market_sessions`), which is a no-op for single-calendar universes. The engine, targets and
+  trades are unchanged (golden test). Effect on the Layer 1 baseline of the control: CAGR
+  37.1% → ~38.5%, all benchmarks likewise; the README restates the numbers on the new basis.
+  Reason: the selection-bias comparison requires the same year definition on both universes.
+
 ## Deviations
 
 None. (Format: date — parameter — old → new — reason — run that motivated it.)

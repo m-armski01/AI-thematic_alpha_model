@@ -76,6 +76,13 @@ class DataBundle:
         return out
 
 
+def output_dir(root: Path, config: Config) -> Path:
+    """Per-run output folder: ``outputs/<run.name>/``."""
+    out = root / "outputs" / config.run.name
+    out.mkdir(parents=True, exist_ok=True)
+    return out
+
+
 def _end_date(config: Config) -> str:
     return config.run.end_date or pd.Timestamp.today().normalize().strftime("%Y-%m-%d")
 
@@ -178,6 +185,14 @@ def build_features(bundle: DataBundle, config: Config) -> FeaturePanel:
         market_ticker=config.universe.benchmarks[0],
     )
     last = fp.eligible.index[-1]
+    if fp.first_dates is not None:
+        for t, row in fp.first_dates.iterrows():
+            logger.info(
+                "eligibility %-10s first price %s | history-eligible %s | liquidity-eligible "
+                "%s | eligible %s",
+                t,
+                *(("n/a" if pd.isna(v) else v.date()) for v in row),
+            )
     logger.info(
         "feature panel: %d rows x %d cols, %s -> %s, eligible on %s: %d/%d",
         len(fp.tidy),
@@ -409,7 +424,10 @@ def compute_risk(
     """Layer 1E: metrics for the strategy and every benchmark, all net of costs."""
     market = config.universe.benchmarks[0]
     close_base, _ = base_currency_prices(bundle, config.run.base_currency)
-    market_returns = close_base[market].pct_change(fill_method=None).rename("market")
+    sessions = bundle.sessions_of[market]
+    market_returns = (
+        close_base[market].reindex(sessions).ffill().pct_change(fill_method=None).rename("market")
+    )
     rf_daily = annualize_rf(bundle.macro[config.risk.rf_series])
 
     names = [STRATEGY, *BENCHMARK_ORDER]
@@ -418,15 +436,16 @@ def compute_risk(
         n: compute_metrics(results[n], rf_daily, market_returns, config.risk, schedule)
         for n in names
     }
-    drawdowns = {n: drawdown_table(results[n].equity_curve) for n in names}
+    drawdowns = {n: drawdown_table(results[n].on_market_calendar()[0]) for n in names}
     strat = results[STRATEGY]
-    rf = rf_daily.reindex(strat.daily_returns.index).ffill().fillna(0.0)
+    _, strat_returns = strat.on_market_calendar()
+    rf = rf_daily.reindex(strat_returns.index).ffill().fillna(0.0)
     rb = rolling_beta(
-        strat.daily_returns - rf,
-        market_returns.reindex(strat.daily_returns.index) - rf,
+        strat_returns - rf,
+        market_returns.reindex(strat_returns.index) - rf,
         config.risk.rolling_beta_window,
     )
-    rs = rolling_sharpe(strat.daily_returns - rf)
+    rs = rolling_sharpe(strat_returns - rf)
     fx = fx_contribution(strat, results["strategy_local"])
     m = metrics[STRATEGY]
     logger.info(
@@ -468,7 +487,9 @@ def make_figures(
             LABELS,
             fig_dir / "equity_curves.png",
         ),
-        "underwater": plots.underwater(underwater(strat.equity_curve), fig_dir / "underwater.png"),
+        "underwater": plots.underwater(
+            underwater(strat.on_market_calendar()[0]), fig_dir / "underwater.png"
+        ),
         "rolling_sharpe": plots.rolling_line(
             risk.rolling_sharpe,
             "Rolling 12-month Sharpe, strategy",
@@ -495,10 +516,13 @@ def make_figures(
             label=(
                 "Applied gate exposure"
                 if strategy.applied.action == "scale"
-                else "Applied gate state (1 = risk-off: block increases)"
+                else "Risk-off (1 = block increases)"
             ),
         ),
     }
+    figs["universe"] = plots.universe_composition(
+        features.eligible.reindex(idx), fig_dir / "universe_composition.png"
+    )
     if attribution is not None:
         figs["turnover"] = plots.turnover_by_cause(
             {n: attribution.by_cause[n] for n in [STRATEGY, *BENCHMARK_ORDER]},
@@ -520,7 +544,7 @@ def write_report(
     n_flagged: int,
     attribution: AttributionBundle | None = None,
 ) -> Path:
-    out_dir = root / "outputs"
+    out_dir = output_dir(root, config)
     figures = make_figures(
         results, risk, strategy, features, config, out_dir / "figures", attribution
     )
@@ -537,6 +561,17 @@ def write_report(
             "n_macro": len(bundle.macro_raw.columns),
             "n_flagged": n_flagged,
             "threshold": config.data.suspicious_return_threshold,
+            "mics": sorted({cal.mic_for(ex) for ex in bundle.exchange_of.values()}),
+        },
+        universe_summary={
+            "file": config.universe.file,
+            "n_names": len(bundle.universe.tickers),
+            "segments": dict(bundle.universe.frame["segment"].value_counts().sort_index()),
+            "first_dates": features.first_dates,
+            "start": strategy.signal_dates.min(),
+            "currencies": sorted(
+                {c for c in bundle.universe.currency_of.values() if c != config.run.base_currency}
+            ),
         },
         strategy_summary={
             "n_signal_dates": len(strategy.signal_dates),
@@ -592,7 +627,7 @@ def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> tuple[
     text = quality.render_quality_report(
         rows, bundle.macro_raw, config.data.suspicious_return_threshold
     )
-    path = quality.write_quality_report(text, root / "outputs" / "data_quality.md")
+    path = quality.write_quality_report(text, output_dir(root, config) / "data_quality.md")
     n_flags = sum(len(r.suspicious) for r in rows)
     logger.info(
         "data quality report -> %s (%d tickers, %d flagged returns)", path, len(rows), n_flags

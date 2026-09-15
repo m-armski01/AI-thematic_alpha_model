@@ -1,8 +1,10 @@
 """Performance and risk metrics (SPEC §1E). Every figure is net of the costs the engine charged.
 
-Conventions: 252 periods per year; the risk-free rate is ``DTB3`` (annual %, discount basis —
-close enough for Sharpe) turned into a daily rate; Sortino uses downside deviation with MAR = 0;
-VaR/CVaR are positive numbers meaning *losses* at the daily horizon.
+Conventions: 252 periods per year on the **market calendar** (``BacktestResult.market_sessions``,
+the primary exchange's sessions, so a NYSE ∪ KRX master calendar does not inflate the year
+count); the risk-free rate is ``DTB3`` (annual %, discount basis — close enough for Sharpe)
+turned into a daily rate; Sortino uses downside deviation with MAR = 0; VaR/CVaR are positive
+numbers meaning *losses* at the daily horizon.
 """
 
 from __future__ import annotations
@@ -98,12 +100,11 @@ def compute_metrics(
     Pass the strategy's execution schedule for every run so buy-and-hold benchmarks (which
     trade only a handful of times) are measured over the same weekly periods.
     """
-    r = result.daily_returns
+    equity, r = result.on_market_calendar()
     rf = rf_daily.reindex(r.index).ffill().fillna(0.0)
     excess = r - rf
     mkt = market_returns.reindex(r.index)
     mkt_excess = mkt - rf
-    equity = result.equity_curve
     years = len(r) / PERIODS
     mdd = max_drawdown(equity)
     dates = period_dates if period_dates is not None else result.execution_dates
@@ -149,14 +150,16 @@ def compute_metrics(
 
 def fx_contribution(base: BacktestResult, local: BacktestResult) -> dict:
     """Base-currency minus local-currency performance of the *same* target weights."""
+    eq_base, _ = base.on_market_calendar()
+    eq_local, _ = local.on_market_calendar()
     return {
         "total_return_base": float(base.final_equity / base.initial_capital - 1.0),
         "total_return_local": float(local.final_equity / local.initial_capital - 1.0),
-        "cagr_base": cagr(base.equity_curve, base.initial_capital),
-        "cagr_local": cagr(local.equity_curve, local.initial_capital),
+        "cagr_base": cagr(eq_base, base.initial_capital),
+        "cagr_local": cagr(eq_local, local.initial_capital),
         "fx_contribution_total": float(
             (base.final_equity - local.final_equity) / base.initial_capital
         ),
-        "fx_contribution_cagr": cagr(base.equity_curve, base.initial_capital)
-        - cagr(local.equity_curve, local.initial_capital),
+        "fx_contribution_cagr": cagr(eq_base, base.initial_capital)
+        - cagr(eq_local, local.initial_capital),
     }

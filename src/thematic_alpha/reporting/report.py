@@ -14,6 +14,7 @@ import pandas as pd
 from thematic_alpha.config import Config
 from thematic_alpha.reporting.tables import (
     drawdown_markdown,
+    fmt_date,
     fmt_num,
     fmt_pct,
     markdown_table,
@@ -35,6 +36,27 @@ HINDSIGHT = (
     "benchmark that isolates what the rules add on top of the selection; read the strategy "
     "column against that one, not against the S&P 500."
 )
+
+
+def point_in_time_paragraph(universe: dict, config: Config) -> str:
+    seg = ", ".join(f"{n} {k}" for k, n in universe["segments"].items())
+    liquidity = (
+        f" and a 21-day average traded value of at least "
+        f"{config.data.min_dollar_volume_21d:,.0f} {config.run.base_currency}"
+        if config.data.min_dollar_volume_21d > 0
+        else ""
+    )
+    return (
+        f"**Universe definition (point-in-time).** The universe is a fixed list of "
+        f"{universe['n_names']} exchange-traded funds chosen by category ({seg}), not by past "
+        f"performance, from `{universe['file']}`. A name enters the cross-section only once it "
+        f"has {config.data.min_history_days} observed sessions{liquidity}, so the investable set "
+        "on every signal date is defined from data available on that date (composition table "
+        "and figure below). Residual bias: the list holds only funds that still trade at the "
+        "snapshot date; funds in these categories that were liquidated or merged away are "
+        "absent, which flatters the equal-weight buy-and-hold of the basket (ETF-delisting "
+        "bias). It is much smaller than hindsight stock selection, but it is not zero."
+    )
 
 
 def git_hash(root: Path) -> str:
@@ -117,11 +139,15 @@ def render_report(
     figures: dict[str, Path],
     figure_root: Path,
     turnover: dict | None = None,
+    universe_summary: dict | None = None,
 ) -> str:
     ccy = config.run.base_currency
     lines: list[str] = []
     lines += [f"# thematic-alpha report — run `{config.run.name}`", ""]
-    lines += [HINDSIGHT, ""]
+    if config.universe.selection == "hindsight" or universe_summary is None:
+        lines += [HINDSIGHT, ""]
+    else:
+        lines += [point_in_time_paragraph(universe_summary, config), ""]
     lines += [
         "> Research system, not a trading system. Nothing here is investment advice. "
         "All figures are net of transaction costs.",
@@ -132,6 +158,13 @@ def render_report(
     lines += ["## Configuration", ""]
     cfg_rows = [
         ["Backtest window", f"{config.run.start_date} → {config.run.end_date or 'latest data'}"],
+        [
+            "Universe",
+            f"`{config.universe.file}`"
+            + (f", {universe_summary['n_names']} names" if universe_summary else "")
+            + f", selection: {config.universe.selection}; market: "
+            f"{config.universe.benchmarks[0]}",
+        ],
         ["Base currency", ccy],
         ["Rebalance", f"{config.backtest.rebalance}, {config.backtest.rebalance_day}"],
         [
@@ -157,13 +190,30 @@ def render_report(
         ["Macro gate", _gate_config_text(config)],
         [
             "Event mask",
-            f"block new exposure {config.event_mask.block_days_before_earnings} sessions before "
-            f"earnings ({'on' if config.event_mask.enabled else 'off'})",
+            (
+                f"block new exposure {config.event_mask.block_days_before_earnings} sessions "
+                "before earnings (on)"
+                if config.event_mask.enabled
+                else "disabled"
+            ),
         ],
         [
             "Sizing",
             f"max weight {config.sizing.max_position_weight:g}, cash floor "
-            f"{config.sizing.cash_floor:g}; house-money rule: Layer 2 (not applied)",
+            f"{config.sizing.cash_floor:g}; house-money rule: "
+            + (
+                "enabled in config but not implemented (Layer 2 item), not applied"
+                if config.sizing.house_money.enabled
+                else "off"
+            ),
+        ],
+        [
+            "Liquidity screen",
+            (
+                f"21-day average traded value ≥ {config.data.min_dollar_volume_21d:,.0f} {ccy}"
+                if config.data.min_dollar_volume_21d > 0
+                else "off"
+            ),
         ],
         [
             "Turnover control",
@@ -178,15 +228,75 @@ def render_report(
     # --- data quality -----------------------------------------------------------------------
     lines += ["## Data quality", ""]
     q = quality_summary
+    multi_calendar = len(q.get("mics", ["XNYS"])) > 1
     lines += [
         f"{q['n_tickers']} price series and {q['n_macro']} FRED series loaded; "
         f"{q['n_flagged']} single-day moves above {fmt_pct(q['threshold'], 0)} flagged for "
-        f"manual review. Full per-ticker table: `outputs/data_quality.md`. Known handling: "
-        "SK Hynix truncated to 2003 (mis-adjusted 2002 reverse split in the source), zero-volume "
-        "bars on Korean holidays dropped, master calendar = NYSE ∪ KRX sessions with forward-fill "
-        "only across a name's own holidays.",
+        f"manual review. Full per-ticker table: `data_quality.md` next to this report. "
+        + (
+            "Known handling: SK Hynix truncated to 2003 (mis-adjusted 2002 reverse split in the "
+            "source), zero-volume bars on Korean holidays dropped, master calendar = NYSE ∪ KRX "
+            "sessions with forward-fill only across a name's own holidays."
+            if multi_calendar
+            else "All names trade on US venues, so the master calendar is the NYSE session "
+            "calendar; no cross-exchange alignment was needed."
+        ),
         "",
     ]
+
+    # --- universe composition -------------------------------------------------------------
+    if universe_summary is not None and universe_summary.get("first_dates") is not None:
+        fd = universe_summary["first_dates"]
+        start = universe_summary["start"]
+        lines += ["## Universe composition", ""]
+        lines += [
+            f"When each name enters the cross-section (backtest starts {fmt_date(start)}; a "
+            "date before that means the name was eligible from the first signal date). "
+            "Liquidity-eligible is the first date the 21-day average traded value clears the "
+            "screen"
+            + (
+                "; the screen is off, so it equals the first price date."
+                if config.data.min_dollar_volume_21d <= 0
+                else "."
+            ),
+            "",
+        ]
+        rows = [
+            [
+                str(t),
+                fmt_date(r["first_price"]),
+                fmt_date(r["first_history_eligible"]),
+                fmt_date(r["first_liquidity_eligible"]),
+                fmt_date(r["first_eligible"]),
+                (
+                    "from start"
+                    if pd.notna(r["first_eligible"]) and r["first_eligible"] <= start
+                    else ("never" if pd.isna(r["first_eligible"]) else "mid-window")
+                ),
+            ]
+            for t, r in fd.iterrows()
+        ]
+        lines += [
+            markdown_table(
+                [
+                    "Ticker",
+                    "First price",
+                    "History-eligible",
+                    "Liquidity-eligible",
+                    "First eligible",
+                    "Enters",
+                ],
+                rows,
+                align="llllll",
+            ),
+            "",
+        ]
+        if "universe" in figures:
+            lines += [
+                f"![universe composition]"
+                f"({figures['universe'].relative_to(figure_root).as_posix()})",
+                "",
+            ]
 
     # --- strategy summary ---------------------------------------------------------------------
     s = strategy_summary
@@ -210,13 +320,15 @@ def render_report(
             f"dates ({config.macro_gate.evaluation}) and held constant in between; ranking "
             "stayed weekly."
         )
-    lines += [
-        f"{s['n_signal_dates']} signal dates. {gate_text} Event mask: "
-        f"**{s['entries_blocked']} entries blocked pre-earnings** "
-        f"({s['masked_ticker_dates']} ticker-dates masked; "
-        f"{s['n_failed_open']} tickers without earnings dates failed open).",
-        "",
-    ]
+    if config.event_mask.enabled:
+        mask_text = (
+            f"Event mask: **{s['entries_blocked']} entries blocked pre-earnings** "
+            f"({s['masked_ticker_dates']} ticker-dates masked; "
+            f"{s['n_failed_open']} tickers without earnings dates failed open)."
+        )
+    else:
+        mask_text = "Event mask: **disabled** (ETFs report no earnings; nothing to mask)."
+    lines += [f"{s['n_signal_dates']} signal dates. {gate_text} {mask_text}", ""]
     if "held_rank_mean" in s:
         lines += [
             f"Average cross-sectional rank of the held names: **{fmt_num(s['held_rank_mean'])}** "
@@ -295,8 +407,13 @@ def render_report(
     lines += [
         f"FX contribution: {fmt_pct(fx['fx_contribution_cagr'])} per year of CAGR; in total the "
         f"{ccy} result differs from the local-currency result by "
-        f"{fmt_pct(fx['fx_contribution_total'])} of initial capital. Positions are unhedged USD "
-        f"and KRW exposure held by a {ccy} investor.",
+        f"{fmt_pct(fx['fx_contribution_total'])} of initial capital. Positions are unhedged "
+        + (
+            " and ".join(universe_summary["currencies"])
+            if universe_summary and universe_summary.get("currencies")
+            else "foreign-currency"
+        )
+        + f" exposure held by a {ccy} investor.",
         "",
     ]
 
