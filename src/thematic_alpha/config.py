@@ -64,6 +64,13 @@ class MacroGateConfig(_Base):
     oil_scale_factor: float = Field(ge=0.0, le=1.0)
     min_exposure: float = Field(ge=0.0, le=1.0)
     combination: Literal["multiplicative", "min", "average"] = "multiplicative"
+    # (a) What the gate does. "scale" multiplies the book by the exposure (Layer 1).
+    # "block_increases": any engaged sub-gate is a boolean risk-off state; non-exempt names are
+    # capped at their previous target (no increases, no new entries), blocked weight stays in
+    # cash, and the scale factors / min_exposure are unused.
+    action: Literal["scale", "block_increases"] = "scale"
+    # Universe ``segment`` values that trade freely while risk-off (e.g. ["defensive"]).
+    block_exempt_segments: list[str] = Field(default_factory=list)
 
 
 class RankerConfig(_Base):

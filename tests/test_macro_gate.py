@@ -22,7 +22,8 @@ CFG = make_config().macro_gate  # vix 25/0.5, yield 0.40/0.7, oil 0.20/0.85, flo
 
 def test_risk_on_is_full_exposure():
     f = gate_factors(_feats([15.0], [0.1], [0.05]), CFG)
-    assert f.iloc[0].tolist() == [1.0, 1.0, 1.0, 1.0]
+    assert f.iloc[0][["vix_factor", "yield_factor", "oil_factor", "exposure"]].tolist() == [1.0] * 4
+    assert not f["risk_off"].iloc[0]
 
 
 def test_each_subgate_fires_independently():

@@ -32,6 +32,10 @@ class Universe:
         return dict(zip(self.frame["ticker"], self.frame["currency"], strict=True))
 
     @property
+    def segment_of(self) -> dict[str, str]:
+        return dict(zip(self.frame["ticker"], self.frame["segment"], strict=True))
+
+    @property
     def regime_start(self) -> dict[str, pd.Timestamp]:
         """Tickers with a non-null regime_start_date -> that date."""
         col = self.frame["regime_start_date"]

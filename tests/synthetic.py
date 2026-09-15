@@ -288,7 +288,12 @@ def make_bundle(market: Market, benchmarks: list[str] | None = None):
 # explicitly so it keeps reproducing Layer 1 after the YAML configs move to the chosen values.
 LAYER1_NEUTRAL: dict[str, dict] = {
     "ranker": {"weighting": "conviction_tier", "exit_rank": None},
-    "macro_gate": {"enabled": True, "combination": "multiplicative"},
+    "macro_gate": {
+        "enabled": True,
+        "combination": "multiplicative",
+        "action": "scale",
+        "block_exempt_segments": [],
+    },
     "event_mask": {"enabled": True, "block_new_entries_only": True},
     "turnover": {"position_band": 0.0},
 }
@@ -297,6 +302,7 @@ LAYER1_NEUTRAL: dict[str, dict] = {
 CHOSEN: dict[str, dict] = {
     "ranker": {"weighting": "equal", "exit_rank": 8},
     "turnover": {"position_band": 0.02},
+    "macro_gate": {"action": "block_increases", "block_exempt_segments": ["defensive"]},
 }
 
 

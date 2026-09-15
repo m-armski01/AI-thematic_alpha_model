@@ -47,6 +47,26 @@ def git_hash(root: Path) -> str:
         return "unknown"
 
 
+def _gate_config_text(config: Config) -> str:
+    g = config.macro_gate
+    triggers = (
+        f"VIX>{g.vix_threshold:g}; 10y +{100 * g.yield_change_threshold:.0f}bp/"
+        f"{g.yield_change_window}d; WTI +{100 * g.oil_change_threshold:.0f}%/{g.oil_change_window}d"
+    )
+    if not g.enabled:
+        return f"disabled ({triggers})"
+    if g.action == "scale":
+        return (
+            f"scale: {triggers} → ×{g.vix_scale_factor:g} / ×{g.yield_scale_factor:g} / "
+            f"×{g.oil_scale_factor:g}; floor {g.min_exposure:g}; {g.combination}"
+        )
+    exempt = ", ".join(g.block_exempt_segments) or "none"
+    return (
+        f"block increases while any sub-gate is engaged ({triggers}); exempt segments: {exempt}; "
+        "scale factors and floor unused"
+    )
+
+
 def _verdict(metrics: dict[str, dict]) -> str:
     s, ew = metrics["strategy"], metrics["equal_weight_bh"]
     better_sharpe = s["sharpe"] > ew["sharpe"]
@@ -125,15 +145,7 @@ def render_report(
                 else ""
             ),
         ],
-        [
-            "Macro gate",
-            f"VIX>{config.macro_gate.vix_threshold:g}→×{config.macro_gate.vix_scale_factor:g}; "
-            f"10y +{100 * config.macro_gate.yield_change_threshold:.0f}bp/"
-            f"{config.macro_gate.yield_change_window}d→×{config.macro_gate.yield_scale_factor:g}; "
-            f"WTI +{100 * config.macro_gate.oil_change_threshold:.0f}%/"
-            f"{config.macro_gate.oil_change_window}d→×{config.macro_gate.oil_scale_factor:g}; "
-            f"floor {config.macro_gate.min_exposure:g}; {config.macro_gate.combination}",
-        ],
+        ["Macro gate", _gate_config_text(config)],
         [
             "Event mask",
             f"block new exposure {config.event_mask.block_days_before_earnings} sessions before "
@@ -170,11 +182,23 @@ def render_report(
     # --- strategy summary ---------------------------------------------------------------------
     s = strategy_summary
     lines += ["## Strategy activity", ""]
+    if s.get("gate_action", "scale") == "scale":
+        gate_text = (
+            f"Macro-gate exposure averaged {fmt_num(s['exposure_mean'])} (minimum "
+            f"{fmt_num(s['exposure_min'])}; below 1.0 on {s['n_gated']} signal dates)."
+        )
+    else:
+        exempt = ", ".join(s.get("exempt", [])) or "none"
+        gate_text = (
+            f"Macro gate in **block-increases** mode: risk-off on {s['n_risk_off']} signal dates, "
+            f"{s['gate_blocked']} increases or entries blocked (that weight stayed in cash; "
+            f"exempt names: {exempt}). The scale factors and `min_exposure` are unused in "
+            "this mode."
+        )
     lines += [
-        f"{s['n_signal_dates']} signal dates. Macro-gate exposure averaged "
-        f"{fmt_num(s['exposure_mean'])} (minimum {fmt_num(s['exposure_min'])}; below 1.0 on "
-        f"{s['n_gated']} signal dates). Event mask: **{s['entries_blocked']} entries blocked "
-        f"pre-earnings** ({s['masked_ticker_dates']} ticker-dates masked; "
+        f"{s['n_signal_dates']} signal dates. {gate_text} Event mask: "
+        f"**{s['entries_blocked']} entries blocked pre-earnings** "
+        f"({s['masked_ticker_dates']} ticker-dates masked; "
         f"{s['n_failed_open']} tickers without earnings dates failed open).",
         "",
     ]
@@ -229,7 +253,15 @@ def render_report(
             f"Macro gate: {g['n_transitions']} state transitions over {g['n_dates']} signal dates "
             f"({fmt_num(g['per_year'], 1)} per year); {g['reversed_within_1']} of them reverse "
             f"within 1 signal date and {g['reversed_within_2']} within 2. The gate accounts for "
-            f"{fmt_pct(turnover['gate_share'])} of the strategy's turnover.",
+            f"{fmt_pct(turnover['gate_share'])} of the strategy's turnover."
+            + (
+                " In block mode a blocked *entry* that executes after the release is membership "
+                "turnover, not gate turnover, so this share only counts blocked increases of "
+                "held names; with equal weights and a full book those are rare, and the gate's "
+                "effect shows up as deferred membership and higher cash instead."
+                if config.macro_gate.action == "block_increases"
+                else ""
+            ),
             "",
         ]
         if "turnover" in figures:
@@ -265,7 +297,7 @@ def render_report(
         ("rolling_sharpe", "Rolling 12-month Sharpe (strategy)"),
         ("rolling_beta", "Rolling beta vs S&P 500 (strategy)"),
         ("weights", "Allocation over time"),
-        ("gate", "Macro-gate exposure and VIX"),
+        ("gate", "Applied macro-gate state and VIX"),
     ]:
         lines += [f"![{caption}]({figures[key].relative_to(figure_root).as_posix()})", ""]
     return "\n".join(lines)

@@ -47,7 +47,7 @@ from thematic_alpha.risk.metrics import (
 )
 from thematic_alpha.strategy.compose import ComposeResult, compose_target_weights
 from thematic_alpha.strategy.event_mask import EventMask, build_event_mask, load_earnings_dates
-from thematic_alpha.strategy.macro_gate import gate_factors
+from thematic_alpha.strategy.macro_gate import GateState, applied_gate, gate_factors
 from thematic_alpha.strategy.ranker import rank_on_signal_dates
 from thematic_alpha.strategy.sizing import announce_house_money
 
@@ -194,7 +194,8 @@ def build_features(bundle: DataBundle, config: Config) -> FeaturePanel:
 @dataclass
 class StrategyBundle:
     signal_dates: pd.DatetimeIndex
-    gate: pd.DataFrame  # date x (vix_factor, yield_factor, oil_factor, exposure), all dates
+    gate: pd.DataFrame  # daily: sub-gate factors / engaged states, exposure, risk_off
+    applied: GateState  # the gate as applied on signal dates
     ranker_weights: pd.DataFrame  # signal_date x ticker
     event_mask: EventMask
     composed: ComposeResult
@@ -218,7 +219,12 @@ def build_strategy(
         end=config.run.end_date,
     )
     gate = gate_factors(features.macro, config.macro_gate)
+    applied = applied_gate(gate, dates, config.macro_gate)
     tickers = list(features.eligible.columns)
+    segment_of = bundle.universe.segment_of
+    exempt = [
+        t for t in tickers if segment_of.get(t) in set(config.macro_gate.block_exempt_segments)
+    ]
     ranked = rank_on_signal_dates(features.wide, features.eligible, config.ranker, dates)
     ranker_weights = ranked.weights
 
@@ -230,7 +236,15 @@ def build_strategy(
     else:
         mask = None
     announce_house_money(config.sizing)
-    composed = compose_target_weights(ranker_weights, gate["exposure"], dates, config.sizing, mask)
+    composed = compose_target_weights(
+        ranker_weights,
+        applied.exposure,
+        dates,
+        config.sizing,
+        mask,
+        risk_off=applied.risk_off if config.macro_gate.action == "block_increases" else None,
+        exempt=exempt,
+    )
     if mask is None:
         mask = EventMask(
             blocked=pd.DataFrame(False, index=bundle.master, columns=tickers), failed_open=[]
@@ -253,6 +267,7 @@ def build_strategy(
     return StrategyBundle(
         signal_dates=dates,
         gate=gate,
+        applied=applied,
         ranker_weights=ranker_weights,
         event_mask=mask,
         composed=composed,
@@ -335,7 +350,7 @@ class AttributionBundle:
 
 def applied_gate_state(strategy: StrategyBundle) -> pd.Series:
     """The gate state the book was actually subjected to, on signal dates."""
-    return strategy.composed.exposure
+    return strategy.applied.state
 
 
 def attribute_turnover(
@@ -470,10 +485,18 @@ def make_figures(
         ),
         "weights": plots.weights_area(strat.weights_history, fig_dir / "weights.png"),
         "gate": plots.gate_and_vix(
-            strategy.gate["exposure"].reindex(idx),
+            strategy.applied.state.astype(float)
+            .reindex(idx)
+            .ffill()
+            .fillna(1.0 if strategy.applied.action == "scale" else 0.0),
             features.macro["vix_level"].reindex(idx),
             config.macro_gate.vix_threshold,
             fig_dir / "gate_vs_vix.png",
+            label=(
+                "Applied gate exposure"
+                if strategy.applied.action == "scale"
+                else "Applied gate state (1 = risk-off: block increases)"
+            ),
         ),
     }
     if attribution is not None:
@@ -525,6 +548,14 @@ def write_report(
             "n_failed_open": len(c.failed_open),
             "held_rank_mean": float(strategy.held_rank.mean()),
             "exit_rank": config.ranker.effective_exit_rank,
+            "gate_action": strategy.applied.action,
+            "n_risk_off": int(strategy.applied.risk_off.sum()),
+            "gate_blocked": c.gate_blocked,
+            "exempt": [
+                t
+                for t in strategy.target_weights.columns
+                if bundle.universe.segment_of.get(t) in set(config.macro_gate.block_exempt_segments)
+            ],
         },
         metrics=risk.metrics,
         drawdowns=risk.drawdowns,

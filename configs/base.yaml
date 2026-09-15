@@ -32,8 +32,10 @@ macro_gate:
   oil_change_window: 21
   oil_change_threshold: 0.20     # +20% in 21d => risk-off
   oil_scale_factor: 0.85
-  min_exposure: 0.30             # floor: never fully de-risk
+  min_exposure: 0.30             # floor: never fully de-risk (unused in block mode)
   combination: "multiplicative"  # multiplicative | min | average
+  action: "block_increases"      # scale | block_increases (L1: scale)
+  block_exempt_segments: ["defensive"]   # segments that trade freely while risk-off (none here)
 
 ranker:
   method: "momentum_zscore"      # momentum_zscore | equal_weight | ml

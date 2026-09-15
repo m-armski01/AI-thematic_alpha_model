@@ -177,14 +177,21 @@ def weights_area(
     return _save(fig, path)
 
 
-def gate_and_vix(exposure: pd.Series, vix: pd.Series, vix_threshold: float, path: Path) -> Path:
-    """Two stacked panels sharing the x-axis (never a dual y-axis)."""
+def gate_and_vix(
+    exposure: pd.Series,
+    vix: pd.Series,
+    vix_threshold: float,
+    path: Path,
+    label: str = "Applied gate exposure",
+) -> Path:
+    """Two stacked panels sharing the x-axis (never a dual y-axis). ``exposure`` is the applied
+    gate state: the multiplier in scale mode, 0/1 risk-off in block mode."""
     fig, (ax1, ax2) = _fig(nrows=2, height=2.6)
     ax1.step(exposure.index, exposure, where="post", color=SERIES[0], linewidth=LINE_W)
     ax1.fill_between(exposure.index, exposure, 0, step="post", color=SERIES[0], alpha=0.10)
     ax1.set_ylim(0, 1.05)
-    _style(ax1, "Macro-gate exposure")
-    _title(ax1, "Macro gate exposure (top) and VIX (bottom)")
+    _style(ax1, label)
+    _title(ax1, "Applied macro-gate state (top) and VIX (bottom)")
     ax2.plot(vix.index, vix, color=SERIES[1], linewidth=LINE_W)
     ax2.axhline(vix_threshold, color=AXIS, linewidth=0.8)
     ax2.annotate(
