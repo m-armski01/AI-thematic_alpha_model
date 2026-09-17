@@ -46,6 +46,7 @@ from thematic_alpha.risk.metrics import (
     rolling_beta,
     rolling_sharpe,
 )
+from thematic_alpha.risk.regimes import VIX_CALM_DEFAULT, compute_regimes
 from thematic_alpha.strategy.compose import ComposeResult, compose_target_weights
 from thematic_alpha.strategy.event_mask import EventMask, build_event_mask, load_earnings_dates
 from thematic_alpha.strategy.macro_gate import GateState, applied_gate, gate_factors
@@ -428,12 +429,20 @@ class RiskBundle:
     fx: dict  # base vs local decomposition of the strategy
     rf_daily: pd.Series
     market_returns: pd.Series
+    # dimension -> (regime, run) x stats for the overlay and equal-weight buy-and-hold; None
+    # when the risk stage is run without the feature panel and the applied gate (study rows).
+    regimes: dict[str, pd.DataFrame] | None = None
 
 
 def compute_risk(
-    bundle: DataBundle, results: dict[str, BacktestResult], config: Config
+    bundle: DataBundle,
+    results: dict[str, BacktestResult],
+    config: Config,
+    features: FeaturePanel | None = None,
+    strategy: StrategyBundle | None = None,
 ) -> RiskBundle:
-    """Layer 1E: metrics for the strategy and every benchmark, all net of costs."""
+    """Layer 1E: metrics for the strategy and every benchmark, all net of costs; with the
+    feature panel and the applied gate also the performance-by-regime tables."""
     market = config.universe.benchmarks[0]
     close_base, _ = base_currency_prices(bundle, config.run.base_currency)
     sessions = bundle.sessions_of[market]
@@ -459,6 +468,24 @@ def compute_risk(
     )
     rs = rolling_sharpe(strat_returns - rf)
     fx = fx_contribution(strat, results["strategy_local"])
+    regimes = None
+    if features is not None and strategy is not None:
+        g = config.macro_gate
+        regimes = compute_regimes(
+            {n: results[n].on_market_calendar()[1] for n in [STRATEGY, "equal_weight_bh"]},
+            strat_returns.index,
+            features.macro,
+            strategy.applied.state,
+            strategy.applied.action,
+            vix_calm=(
+                g.vix_release_threshold
+                if g.vix_release_threshold is not None
+                else min(VIX_CALM_DEFAULT, g.vix_threshold)
+            ),
+            vix_stress=g.vix_threshold,
+            rate_column=f"dgs10_chg_{g.yield_change_window}d",
+            rate_threshold=g.yield_change_threshold,
+        )
     m = metrics[STRATEGY]
     logger.info(
         "risk: strategy CAGR=%.1f%% vol=%.1f%% sharpe=%.2f maxDD=%.1f%% | FX contribution "
@@ -478,6 +505,7 @@ def compute_risk(
         fx=fx,
         rf_daily=rf_daily,
         market_returns=market_returns,
+        regimes=regimes,
     )
 
 
@@ -610,6 +638,7 @@ def write_report(
         fx=risk.fx,
         figures=figures,
         figure_root=out_dir,
+        regimes=risk.regimes,
         turnover=(
             {
                 "by_cause": attribution.by_cause,

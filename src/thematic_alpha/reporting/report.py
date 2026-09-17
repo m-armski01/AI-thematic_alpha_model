@@ -232,6 +232,115 @@ def _alpha_sentence(metrics: dict[str, dict]) -> str:
     return text
 
 
+REGIME_TITLES = {
+    "vix": "By VIX regime (lagged level the gate reads)",
+    "gate": "By applied gate state",
+    "rates": "By 10-year yield change (rate shock = above the gate's engage threshold)",
+}
+
+
+def _regime_intro(config: Config) -> str:
+    g = config.macro_gate
+    calm = g.vix_release_threshold if g.vix_release_threshold is not None else 20.0
+    return (
+        "The overlay is a macro-timing rule, so it is tested where it claims to help. Every "
+        "session is tagged by the state the gate could see that day and the overlay is compared "
+        "with equal-weight buy-and-hold inside each bucket: VIX calm below "
+        f"{calm:g}, elevated between {calm:g} and {g.vix_threshold:g}, stress above "
+        f"{g.vix_threshold:g}; gate risk-off / risk-on as applied to the book; rate shock when "
+        f"the {g.yield_change_window}-day change in the 10-year yield exceeds "
+        f"{100 * g.yield_change_threshold:.0f} bp. Total return compounds the bucket's sessions "
+        "and the worst drawdown is measured on that concatenated path; an annualised return is "
+        "shown only for buckets with at least 24 months of sessions."
+    )
+
+
+def regime_markdown(table: pd.DataFrame) -> str:
+    rows = []
+    for (regime, run), r in table.iterrows():
+        rows.append(
+            [
+                str(regime),
+                LABELS.get(run, run),
+                fmt_pct(r["share"]),
+                fmt_pct(r["total_return"]),
+                fmt_pct(r["ann_return"]),
+                fmt_pct(r["ann_vol"]),
+                fmt_pct(r["hit_rate"]),
+                fmt_pct(r["max_drawdown"]),
+            ]
+        )
+    return markdown_table(
+        [
+            "Regime",
+            "Run",
+            "Share of sessions",
+            "Total return",
+            "Annualised",
+            "Volatility",
+            "Hit rate (sessions)",
+            "Worst drawdown",
+        ],
+        rows,
+        align="ll" + "r" * 6,
+    )
+
+
+def _bucket_beats(table: pd.DataFrame, regime: str) -> bool | None:
+    try:
+        s, ew = table.loc[(regime, "strategy")], table.loc[(regime, "equal_weight_bh")]
+    except KeyError:
+        return None
+    if not (_finite(s["total_return"]) and _finite(ew["total_return"])):
+        return None
+    return bool(s["total_return"] > ew["total_return"])
+
+
+def _regime_verdict(regimes: dict[str, pd.DataFrame]) -> str:
+    checks = []
+    for dim, regime, name in (
+        ("vix", "stress", "in the VIX stress regime"),
+        ("gate", "risk-off", "while the gate is risk-off"),
+        ("rates", "rate shock", "during rate shocks"),
+    ):
+        if dim not in regimes:
+            continue
+        beats = _bucket_beats(regimes[dim], regime)
+        if beats is None:
+            continue
+        t = regimes[dim]
+        s, ew = t.loc[(regime, "strategy")], t.loc[(regime, "equal_weight_bh")]
+        checks.append(
+            (
+                beats,
+                f"{name} ({fmt_pct(s['share'])} of sessions) the overlay returns "
+                f"{fmt_pct(s['total_return'])} against {fmt_pct(ew['total_return'])} for "
+                f"buy-and-hold, with a worst drawdown of {fmt_pct(s['max_drawdown'])} vs "
+                f"{fmt_pct(ew['max_drawdown'])}",
+            )
+        )
+    if not checks:
+        return "No stress bucket has enough sessions to compare."
+    n_win = sum(1 for beats, _ in checks if beats)
+    detail = "; ".join(text for _, text in checks) + "."
+    if n_win == len(checks):
+        conclusion = (
+            "**The overlay helps specifically in the stress regimes it was designed for**: it "
+            "beats holding the basket in every stress bucket."
+        )
+    elif n_win == 0:
+        conclusion = (
+            "**The overlay does not help in the stress regimes it was designed for**: it trails "
+            "holding the basket in every stress bucket."
+        )
+    else:
+        conclusion = (
+            f"**The regime evidence is mixed**: the overlay beats holding the basket in {n_win} of "
+            f"{len(checks)} stress buckets."
+        )
+    return f"{detail[0].upper()}{detail[1:]} {conclusion}"
+
+
 def limitations(config: Config, universe: dict | None, metrics: dict[str, dict]) -> list[str]:
     sm = metrics["strategy"]
     months = sm.get("window_months")
@@ -287,6 +396,7 @@ def render_report(
     figure_root: Path,
     turnover: dict | None = None,
     universe_summary: dict | None = None,
+    regimes: dict[str, pd.DataFrame] | None = None,
 ) -> str:
     ccy = config.run.base_currency
     rc = config.report
@@ -345,6 +455,15 @@ def render_report(
         ),
         "",
     ]
+
+    # --- performance by regime --------------------------------------------------------------
+    if regimes is not None:
+        lines += ["## Performance by regime", ""]
+        lines += [_regime_intro(config), ""]
+        for dim, title in REGIME_TITLES.items():
+            if dim in regimes:
+                lines += [f"**{title}**", "", regime_markdown(regimes[dim]), ""]
+        lines += [_regime_verdict(regimes), ""]
 
     # --- config ---------------------------------------------------------------------------
     lines += ["## Configuration", ""]

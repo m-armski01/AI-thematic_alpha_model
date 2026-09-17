@@ -46,6 +46,41 @@ Annualised rows (CAGR, Calmar, alpha) are not reported: the window covers 8 mont
 
 VaR note: parametric (normal) 99% VaR of the overlay is 8.1% against a historical 8.3%; daily excess kurtosis is 0.26. The normal assumption understates the tail.
 
+## Performance by regime
+
+The overlay is a macro-timing rule, so it is tested where it claims to help. Every session is tagged by the state the gate could see that day and the overlay is compared with equal-weight buy-and-hold inside each bucket: VIX calm below 20, elevated between 20 and 25, stress above 25; gate risk-off / risk-on as applied to the book; rate shock when the 21-day change in the 10-year yield exceeds 40 bp. Total return compounds the bucket's sessions and the worst drawdown is measured on that concatenated path; an annualised return is shown only for buckets with at least 24 months of sessions.
+
+**By VIX regime (lagged level the gate reads)**
+
+| Regime | Run | Share of sessions | Total return | Annualised | Volatility | Hit rate (sessions) | Worst drawdown |
+|---|---|---:|---:|---:|---:|---:|---:|
+| calm | Overlay | 78.7% | 96.9% | n/a | 58.4% | 64.2% | -36.7% |
+| calm | Equal-weight buy-and-hold (basket) | 78.7% | 35.5% | n/a | 44.2% | 57.7% | -32.1% |
+| elevated | Overlay | 13.2% | 17.2% | n/a | 62.9% | 65.2% | -17.0% |
+| elevated | Equal-weight buy-and-hold (basket) | 13.2% | 20.1% | n/a | 50.1% | 73.9% | -12.3% |
+| stress | Overlay | 8.0% | 20.4% | n/a | 70.4% | 71.4% | -14.0% |
+| stress | Equal-weight buy-and-hold (basket) | 8.0% | 13.6% | n/a | 54.0% | 71.4% | -12.3% |
+
+**By applied gate state**
+
+| Regime | Run | Share of sessions | Total return | Annualised | Volatility | Hit rate (sessions) | Worst drawdown |
+|---|---|---:|---:|---:|---:|---:|---:|
+| risk-on | Overlay | 77.6% | 81.5% | n/a | 62.4% | 63.7% | -32.2% |
+| risk-on | Equal-weight buy-and-hold (basket) | 77.6% | 31.2% | n/a | 46.4% | 58.5% | -28.5% |
+| risk-off | Overlay | 22.4% | 53.1% | n/a | 49.2% | 69.2% | -6.8% |
+| risk-off | Equal-weight buy-and-hold (basket) | 22.4% | 40.9% | n/a | 42.8% | 69.2% | -10.3% |
+
+**By 10-year yield change (rate shock = above the gate's engage threshold)**
+
+| Regime | Run | Share of sessions | Total return | Annualised | Volatility | Hit rate (sessions) | Worst drawdown |
+|---|---|---:|---:|---:|---:|---:|---:|
+| no shock | Overlay | 98.9% | 194.6% | n/a | 59.4% | 65.1% | -32.2% |
+| no shock | Equal-weight buy-and-hold (basket) | 98.9% | 91.5% | n/a | 45.6% | 61.0% | -28.5% |
+| rate shock | Overlay | 1.1% | -5.7% | n/a | 90.6% | 50.0% | 0.0% |
+| rate shock | Equal-weight buy-and-hold (basket) | 1.1% | -3.4% | n/a | 64.2% | 50.0% | 0.0% |
+
+In the VIX stress regime (8.0% of sessions) the overlay returns 20.4% against 13.6% for buy-and-hold, with a worst drawdown of -14.0% vs -12.3%; while the gate is risk-off (22.4% of sessions) the overlay returns 53.1% against 40.9% for buy-and-hold, with a worst drawdown of -6.8% vs -10.3%; during rate shocks (1.1% of sessions) the overlay returns -5.7% against -3.4% for buy-and-hold, with a worst drawdown of 0.0% vs 0.0%. **The regime evidence is mixed**: the overlay beats holding the basket in 2 of 3 stress buckets.
+
 ## Configuration
 
 | Setting | Value |

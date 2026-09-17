@@ -150,7 +150,7 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
         f"{100 * attribution.gate_share:.0f}% of turnover"
     )
 
-    risk = pipeline.compute_risk(bundle, results, config)
+    risk = pipeline.compute_risk(bundle, results, config, features, strategy)
     print(f"[Layer 1E] {'run':<16} {'CAGR':>7} {'vol':>7} {'Sharpe':>7} {'maxDD':>7} {'costs%':>7}")
     for name in [pipeline.STRATEGY, *pipeline.BENCHMARK_ORDER]:
         m = risk.metrics[name]
