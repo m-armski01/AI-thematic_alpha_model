@@ -301,6 +301,7 @@ LAYER1_NEUTRAL: dict[str, dict] = {
     "event_mask": {"enabled": True, "block_new_entries_only": True},
     "turnover": {"position_band": 0.0},
     "data": {"min_dollar_volume_21d": 0.0},
+    "backtest": {"cash_earns_rf": False},
 }
 
 # The chosen (preregistered) values of the same knobs, for tests that must pass with them on.
@@ -308,6 +309,7 @@ CHOSEN: dict[str, dict] = {
     "ranker": {"weighting": "equal", "exit_rank": 8},
     "turnover": {"position_band": 0.02},
     "data": {"min_dollar_volume_21d": 5_000_000.0},
+    "backtest": {"cash_earns_rf": True},
     "macro_gate": {
         "action": "block_increases",
         "block_exempt_segments": ["defensive"],

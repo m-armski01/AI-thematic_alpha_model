@@ -40,6 +40,7 @@ from thematic_alpha.reporting.report import write_report as write_report_file
 from thematic_alpha.risk.drawdown import drawdown_table, underwater
 from thematic_alpha.risk.metrics import (
     annualize_rf,
+    cash_accrual_rates,
     compute_metrics,
     fx_contribution,
     rolling_beta,
@@ -312,6 +313,18 @@ def run_backtests(
     sessions = bundle.sessions_of[market]
     dates = strategy.signal_dates
     end = config.run.end_date
+    cash_rate = None
+    if config.backtest.cash_earns_rf:
+        # Same accrual series for the strategy and every benchmark (fair cash treatment).
+        idx = close_base.index[close_base.index >= dates.min()]
+        if end is not None:
+            idx = idx[idx <= pd.Timestamp(end)]
+        cash_rate = cash_accrual_rates(bundle.macro[config.risk.rf_series], idx)
+        logger.info(
+            "idle cash earns %s: mean %.2f%% p.a. over the window",
+            config.risk.rf_series,
+            100 * bundle.macro[config.risk.rf_series].reindex(idx).mean(),
+        )
 
     def _run(close, open_, targets, band: float = 0.0):
         return run_backtest(
@@ -324,6 +337,7 @@ def run_backtests(
             dates.min(),
             end,
             position_band=band,
+            cash_rate=cash_rate,
         )
 
     # The position band is a strategy turnover control; benchmarks never get it.

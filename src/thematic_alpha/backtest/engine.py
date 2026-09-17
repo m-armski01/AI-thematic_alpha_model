@@ -11,6 +11,10 @@ when the target is within the band of the *drifted* pre-trade weight at the exec
 skipped residual stays in cash and nothing is renormalized. Full exits and new entries always
 trade.
 
+Idle cash (``cash_rate`` given): at the start of every session, before any trade, the cash
+balance is compounded by that session's simple rate (``cash *= 1 + rate``); sessions without a
+rate accrue nothing. With ``cash_rate=None`` cash earns zero and the arithmetic is untouched.
+
 Approximation (documented): if a ticker's own exchange is closed on an execution date, it trades
 at its forward-filled price. A ticker whose price is NaN (not yet listed / real gap) cannot be
 traded that day; its target weight is left in cash.
@@ -105,6 +109,7 @@ def run_backtest(
     start: str | pd.Timestamp | None = None,
     end: str | pd.Timestamp | None = None,
     position_band: float = 0.0,
+    cash_rate: pd.Series | None = None,
 ) -> BacktestResult:
     px_close = prices_close.sort_index()
     tickers = list(px_close.columns)
@@ -131,6 +136,9 @@ def run_backtest(
     close_ff = px_close.ffill().loc[dates].to_numpy(dtype=float)
     px_exec = px_exec_all.loc[dates].to_numpy(dtype=float)
     exec_rows = {d: targets.loc[d].to_numpy(dtype=float) for d in targets.index if d in dates}
+    rate = None
+    if cash_rate is not None:
+        rate = cash_rate.reindex(dates).fillna(0.0).to_numpy(dtype=float)
 
     n = len(tickers)
     shares = np.zeros(n)
@@ -146,6 +154,8 @@ def run_backtest(
     prev_target = np.zeros(n)
 
     for i, d in enumerate(dates):
+        if rate is not None and rate[i] != 0.0:
+            cash *= 1.0 + rate[i]
         if d in exec_rows:
             px = px_exec[i]
             tradable = np.isfinite(px)

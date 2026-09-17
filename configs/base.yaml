@@ -75,6 +75,7 @@ backtest:
   execution_lag_days: 1          # signal at t, execute at t+1
   execution_price: "open"        # open | close
   initial_capital: 10000.0
+  cash_earns_rf: true            # idle cash accrues DTB3 (calendar-day basis), all runs (L1: false)
 
 costs:
   model: "bps"                   # bps | flat_fee | both

@@ -131,3 +131,14 @@ def test_metrics_annualize_on_the_market_calendar():
     assert m_market["cagr"] == pytest.approx(1.001 ** (503 / 2) - 1, rel=1e-9)  # 503 steps, 2y
     assert m_master["cagr"] < m_market["cagr"]  # the master-calendar count understates it
     assert on_market.final_equity == on_master.final_equity  # the engine itself is unchanged
+
+
+def test_cash_accrual_rates_use_calendar_days_and_never_backfill():
+    dates = pd.DatetimeIndex(["2024-01-04", "2024-01-05", "2024-01-08", "2024-01-09"])
+    rf = pd.Series([np.nan, 3.65, 3.65, np.nan], index=dates)  # annual %, leading + trailing gap
+    out = m.cash_accrual_rates(rf, dates)
+    assert out.iloc[0] == 0.0  # first session: nothing to accrue over
+    assert abs(out.iloc[1] - 0.0365 * 1 / 365) < 1e-15  # Thu -> Fri: one day
+    assert abs(out.iloc[2] - 0.0365 * 3 / 365) < 1e-15  # Fri -> Mon: the weekend counts
+    assert out.iloc[3] == 0.0  # no published rate: no accrual, no fill
+    assert list(out.index) == list(dates)

@@ -24,6 +24,17 @@ def annualize_rf(rf_annual_pct: pd.Series) -> pd.Series:
     return (rf_annual_pct / 100.0 / PERIODS).rename("rf_daily")
 
 
+def cash_accrual_rates(rf_annual_pct: pd.Series, dates: pd.DatetimeIndex) -> pd.Series:
+    """Per-session simple rate earned on idle cash: annual % x calendar days since the previous
+    session / 365. Calendar days (not a 1/252 session count) so the accrual does not depend on
+    which exchanges' sessions the engine iterates over. The first session and any session
+    without a published rate accrue 0; nothing is back-filled."""
+    dates = pd.DatetimeIndex(dates)
+    rf = rf_annual_pct.reindex(dates).to_numpy(dtype=float) / 100.0
+    days = dates.to_series().diff().dt.days.fillna(0.0).to_numpy(dtype=float)
+    return pd.Series(np.nan_to_num(rf * days / 365.0), index=dates, name="cash_rate")
+
+
 def cagr(equity: pd.Series, initial: float) -> float:
     years = len(equity) / PERIODS
     return float((equity.iloc[-1] / initial) ** (1.0 / years) - 1.0) if years > 0 else 0.0

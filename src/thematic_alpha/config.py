@@ -178,6 +178,9 @@ class BacktestConfig(_Base):
     execution_lag_days: int = Field(ge=0)
     execution_price: Literal["open", "close"] = "open"
     initial_capital: float = Field(gt=0.0)
+    # Idle cash accrues the risk-free rate (``risk.rf_series``, calendar-day basis) for the
+    # strategy and every benchmark alike. False = cash earns 0 (Layer 1).
+    cash_earns_rf: bool = False
 
 
 class CostsConfig(_Base):
