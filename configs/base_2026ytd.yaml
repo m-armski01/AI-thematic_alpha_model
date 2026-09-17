@@ -1,3 +1,6 @@
+# HEADLINE RUN, 2026 year-to-date window. Same basket and chosen rules as configs/base.yaml; only
+# run.name and run.start_date differ. An 8-month window: the report suppresses annualised metrics
+# (CAGR, Calmar, alpha) and prints total return and drawdown instead.
 run:
   name: "base_2026ytd"
   seed: 42

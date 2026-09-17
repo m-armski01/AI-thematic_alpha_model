@@ -1,7 +1,6 @@
-# Point-in-time ETF universe (brief v2). Identical to configs/base.yaml (the 12-stock basket)
-# in every chosen turnover and gate setting, window, costs, base currency and top_n; it differs
-# only in run.name, the universe file, the benchmark list, the selection framing, and the
-# event-mask flag (off: ETFs report no earnings).
+# CONTROL RUN, 2026 year-to-date window. Same ETF universe and chosen rules as configs/etf.yaml;
+# only run.name and run.start_date differ. An 8-month window: the report suppresses annualised
+# metrics (CAGR, Calmar, alpha) and prints total return and drawdown instead.
 run:
   name: "etf_2026ytd"
   seed: 42

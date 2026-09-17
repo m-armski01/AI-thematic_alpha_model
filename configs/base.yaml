@@ -1,3 +1,7 @@
+# HEADLINE RUN. The author's own 12-stock AI / datacenter basket (owned_portfolio), 2015-2026:
+# does the active macro overlay beat equal-weight buy-and-hold of the same basket? Chosen values
+# live here; every neutral default in config.py reproduces Layer 1. Annualised metrics are
+# suppressed by the report on windows under 24 months.
 run:
   name: "base"
   seed: 42

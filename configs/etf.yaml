@@ -1,7 +1,7 @@
-# Point-in-time ETF universe (brief v2). Identical to configs/base.yaml (the 12-stock basket)
-# in every chosen turnover and gate setting, window, costs, base currency and top_n; it differs
-# only in run.name, the universe file, the benchmark list, the selection framing, and the
-# event-mask flag (off: ETFs report no earnings).
+# CONTROL RUN (does the overlay generalise?). Point-in-time ETF universe, 2015-2026: identical
+# to configs/base.yaml in every chosen rule, window, costs and base currency; differs only in
+# run.name, the universe file, the benchmark list, the selection framing, the report text and the
+# event-mask flag (off: ETFs report no earnings). Annualised metrics are suppressed under 24 months.
 run:
   name: "etf"
   seed: 42

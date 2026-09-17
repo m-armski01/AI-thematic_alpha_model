@@ -1,10 +1,18 @@
 # thematic-alpha
 
 Spec: `../AI sector quantbot SPEC.md`; brief v2 decisions are recorded in the task history and
-`docs/preregistration_v2.md`. Status and results: `README.md` → "Build status" and
-`outputs/study.md`. Layer 1 (12-stock control, PR #2) and brief v2 (point-in-time ETF universe +
-turnover control, branch `2-build-ETF-Universe`, issue #3) are done. Next: the §13 case study
-(2026 YTD vs the real trade log), a point-in-time stock universe (§15), the house-money simulator.
+`docs/preregistration_v2.md`; the publishable-state rework is the work order in `IMPROVEMENTS.md`.
+Status and results: `README.md` → "Build status" and `outputs/study.md`. Layer 1 (12-stock
+basket, PR #2), brief v2 (point-in-time ETF universe + turnover control, issue #3) and the
+IMPROVEMENTS rework (cash at DTB3, report reframing, regimes, momentum-window sensitivity,
+scaffolding removal; branch `4-publishable-report`, issue #4) are done. Next: the §13 case study
+(2026 YTD vs the real trade log), a point-in-time stock universe (§15).
+
+**Framing.** This is a single-investor study: the 12 names in `data/reference/universe.csv` are
+the author's holdings (`universe.selection: owned_portfolio`), the headline is the overlay vs
+equal-weight buy-and-hold of that basket, and the ETF universe (`point_in_time`) and the study
+are the generalisation control. The `report:` block in each YAML fixes title / subtitle / author
+/ thesis; every verdict sentence is generated from the numbers.
 
 ## Environment and commands
 
@@ -26,7 +34,10 @@ turnover control, branch `2-build-ETF-Universe`, issue #3) are done. Next: the �
 - Keep the checkpoint rhythm: one sub-step → lint, tests, real demo run, one commit.
 - **Neutral defaults.** Every new config knob's pydantic default reproduces Layer 1 exactly;
   chosen values live only in the YAML configs. `tests/test_golden.py` must stay green; extend
-  `LAYER1_NEUTRAL` and `CHOSEN` in `tests/synthetic.py` whenever a knob is added.
+  `LAYER1_NEUTRAL` and `CHOSEN` in `tests/synthetic.py` whenever a knob is added. Current
+  knobs beyond Layer 1: `backtest.cash_earns_rf` (idle cash at DTB3, calendar-day accrual, on
+  in all configs as a measurement change) and `ranker.momentum_signal` (mom_63 chosen;
+  mom_126 / mom_252 are a sensitivity set in the study, nothing promoted).
 - **Parameter discipline.** Values go into `docs/preregistration_v2.md` (neutral, chosen,
   rationale, "set from standard practice, not optimised") and are committed *before* any run
   that uses them. Never change a parameter after seeing performance without asking the user; an
@@ -39,7 +50,11 @@ turnover control, branch `2-build-ETF-Universe`, issue #3) are done. Next: the �
 - Every performance figure is net of costs and reported next to the equal-weight buy-and-hold
   of the same basket. Selection bias stays the first thing the README, the reports and the
   study say. Turnover figures are reported next to the average held rank.
-- Verdict sentences in reports are generated from the numbers, never hard-coded.
+- Verdict sentences in reports are generated from the numbers, never hard-coded. Reports lead
+  with thesis, framing and verdict against buy-and-hold of the basket; SPY and naive momentum
+  are appendix context; CAGR / Calmar / alpha are suppressed under 24 months
+  (`risk.metrics.MIN_ANNUALISE_SESSIONS`); a "Performance by regime" section (VIX / applied
+  gate / rate shock, `risk/regimes.py`) tests the macro-timing claim where it is made.
 
 ## Outputs layout
 
