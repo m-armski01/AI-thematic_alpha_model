@@ -65,35 +65,35 @@ Average cross-sectional rank of the held names: **3.61** (exit rank 8, top 5; pl
 
 | Metric | Strategy | S&P 500 (SPY) B&H | Equal-weight B&H (universe) | Naive momentum (top-N) |
 |---|---:|---:|---:|---:|
-| Total return | 16.3% | 12.8% | 11.0% | 20.6% |
-| CAGR | 24.5% | 19.0% | 16.3% | 31.2% |
+| Total return | 16.5% | 12.8% | 11.0% | 20.6% |
+| CAGR | 24.8% | 19.0% | 16.4% | 31.2% |
 | Annualized volatility | 16.7% | 12.7% | 10.5% | 16.9% |
-| Sharpe (excess over DTB3) | 1.18 | 1.14 | 1.15 | 1.48 |
-| Sortino (MAR 0) | 1.86 | 1.70 | 1.72 | 2.23 |
+| Sharpe (excess over DTB3) | 1.19 | 1.15 | 1.15 | 1.48 |
+| Sortino (MAR 0) | 1.89 | 1.70 | 1.73 | 2.23 |
 | Max drawdown | -7.3% | -7.5% | -5.8% | -8.7% |
 | Max DD peak | 2026-03-02 | 2026-01-09 | 2026-03-02 | 2026-03-02 |
 | Max DD trough | 2026-03-23 | 2026-03-27 | 2026-03-27 | 2026-03-23 |
 | Max DD recovery | 2026-05-29 | 2026-04-16 | 2026-05-06 | 2026-05-14 |
 | Max DD duration (days) | 88 | 97 | 65 | 73 |
-| Calmar | 3.34 | 2.54 | 2.82 | 3.57 |
-| Alpha vs S&P 500 (ann.) | 5.2% | -1.3% | 0.5% | 11.3% |
+| Calmar | 3.38 | 2.54 | 2.82 | 3.57 |
+| Alpha vs S&P 500 (ann.) | 5.4% | -1.2% | 0.6% | 11.3% |
 | Beta vs S&P 500 | 0.91 | 0.99 | 0.72 | 0.86 |
 | Historical VaR 95% (daily) | 1.6% | 1.3% | 1.0% | 1.6% |
 | Historical VaR 99% (daily) | 2.0% | 1.7% | 1.5% | 2.3% |
 | Parametric VaR 95% (daily) | 1.6% | 1.2% | 1.0% | 1.6% |
-| Parametric VaR 99% (daily) | 2.4% | 1.8% | 1.5% | 2.4% |
+| Parametric VaR 99% (daily) | 2.3% | 1.8% | 1.5% | 2.4% |
 | CVaR / ES 95% (daily) | 2.0% | 1.7% | 1.4% | 2.2% |
-| Excess kurtosis (daily) | 1.13 | 1.40 | 1.69 | 0.51 |
+| Excess kurtosis (daily) | 1.13 | 1.40 | 1.68 | 0.52 |
 | Hit rate (weekly periods) | 62.9% | 57.1% | 57.1% | 65.7% |
 | Average win (weekly period) | 1.6% | 1.5% | 1.2% | 1.8% |
 | Average loss (weekly period) | -1.4% | -1.1% | -0.8% | -1.7% |
 | Annualized turnover | 10.79 | 1.45 | 1.45 | 25.63 |
-| Total costs paid | 64.85 | 7.99 | 7.99 | 156.13 |
+| Total costs paid | 64.91 | 8.00 | 8.00 | 156.18 |
 | Costs as % of final equity | 0.56% | 0.07% | 0.07% | 1.29% |
 
-Against equal-weight buy-and-hold of the same basket the strategy's CAGR is higher (24.5% vs 16.3%), its Sharpe is higher (1.18 vs 1.15), and its maximum drawdown is deeper (-7.3% vs -5.8%).
+Against equal-weight buy-and-hold of the same basket the strategy's CAGR is higher (24.8% vs 16.4%), its Sharpe is higher (1.19 vs 1.15), and its maximum drawdown is deeper (-7.3% vs -5.8%).
 
-VaR note: parametric (normal) 99% VaR is 2.4% against a historical 2.0%; daily excess kurtosis is 1.13. The normal assumption does not understate the 99% tail here.
+VaR note: parametric (normal) 99% VaR is 2.3% against a historical 2.0%; daily excess kurtosis is 1.13. The normal assumption does not understate the 99% tail here.
 
 ## Turnover attribution
 
@@ -101,7 +101,7 @@ Annualized turnover split by cause (see `backtest/attribution.py`): **membership
 
 | Run | membership | drift | gate | reweight | total |
 |---|---:|---:|---:|---:|---:|
-| Strategy | 10.63 | 0.17 | 0.00 | 0.00 | 10.79 |
+| Strategy | 10.62 | 0.17 | 0.00 | 0.00 | 10.79 |
 | S&P 500 (SPY) B&H | 1.45 | 0.00 | 0.00 | 0.00 | 1.45 |
 | Equal-weight B&H (universe) | 1.45 | 0.00 | 0.00 | 0.00 | 1.45 |
 | Naive momentum (top-N) | 24.69 | 0.93 | 0.00 | 0.00 | 25.63 |
@@ -114,8 +114,8 @@ Macro gate: 4 state transitions over 37 signal dates (5.8 per year); 0 of them r
 
 |  | In EUR | In local currencies |
 |---|---:|---:|
-| Total return | 16.3% | 14.7% |
-| CAGR | 24.5% | 22.0% |
+| Total return | 16.5% | 14.9% |
+| CAGR | 24.8% | 22.3% |
 
 FX contribution: 2.5% per year of CAGR; in total the EUR result differs from the local-currency result by 1.6% of initial capital. Positions are unhedged USD exposure held by a EUR investor.
 

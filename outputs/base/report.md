@@ -60,35 +60,35 @@ Average cross-sectional rank of the held names: **3.82** (exit rank 8, top 5; pl
 
 | Metric | Strategy | S&P 500 (SPY) B&H | Equal-weight B&H (universe) | Naive momentum (top-N) |
 |---|---:|---:|---:|---:|
-| Total return | 4883.6% | 364.5% | 5149.2% | 6100.9% |
-| CAGR | 39.8% | 14.1% | 40.4% | 42.4% |
+| Total return | 4942.4% | 364.5% | 5149.2% | 6100.9% |
+| CAGR | 39.9% | 14.1% | 40.4% | 42.4% |
 | Annualized volatility | 32.7% | 18.6% | 30.9% | 34.4% |
 | Sharpe (excess over DTB3) | 1.13 | 0.69 | 1.19 | 1.14 |
 | Sortino (MAR 0) | 1.67 | 0.96 | 1.72 | 1.67 |
-| Max drawdown | -42.4% | -33.5% | -45.0% | -55.2% |
+| Max drawdown | -42.3% | -33.5% | -45.0% | -55.2% |
 | Max DD peak | 2024-06-18 | 2020-02-19 | 2021-12-27 | 2022-01-03 |
 | Max DD trough | 2025-04-21 | 2020-03-23 | 2022-12-28 | 2022-12-28 |
 | Max DD recovery | 2025-07-17 | 2021-01-07 | 2023-12-21 | 2024-02-14 |
 | Max DD duration (days) | 394 | 323 | 724 | 772 |
 | Calmar | 0.94 | 0.42 | 0.90 | 0.77 |
-| Alpha vs S&P 500 (ann.) | 21.7% | -0.1% | 19.9% | 22.7% |
+| Alpha vs S&P 500 (ann.) | 21.8% | -0.1% | 19.9% | 22.7% |
 | Beta vs S&P 500 | 1.17 | 1.00 | 1.30 | 1.28 |
 | Historical VaR 95% (daily) | 3.1% | 1.7% | 3.1% | 3.3% |
 | Historical VaR 99% (daily) | 5.5% | 3.3% | 5.3% | 5.9% |
 | Parametric VaR 95% (daily) | 3.2% | 1.9% | 3.1% | 3.4% |
 | Parametric VaR 99% (daily) | 4.6% | 2.7% | 4.4% | 4.9% |
 | CVaR / ES 95% (daily) | 4.8% | 2.9% | 4.5% | 5.1% |
-| Excess kurtosis (daily) | 4.71 | 10.87 | 3.95 | 3.33 |
-| Hit rate (weekly periods) | 57.6% | 60.3% | 61.4% | 60.3% |
-| Average win (weekly period) | 3.6% | 1.7% | 3.4% | 3.8% |
+| Excess kurtosis (daily) | 4.70 | 10.87 | 3.95 | 3.33 |
+| Hit rate (weekly periods) | 59.9% | 60.3% | 61.4% | 60.3% |
+| Average win (weekly period) | 3.5% | 1.7% | 3.4% | 3.8% |
 | Average loss (weekly period) | -3.3% | -1.8% | -3.4% | -3.7% |
 | Annualized turnover | 4.14 | 0.09 | 0.90 | 15.55 |
-| Total costs paid | 2,899.25 | 7.99 | 920.58 | 11,883.24 |
+| Total costs paid | 2,922.35 | 7.99 | 920.58 | 11,883.26 |
 | Costs as % of final equity | 0.58% | 0.02% | 0.18% | 1.92% |
 
-Against equal-weight buy-and-hold of the same basket the strategy's CAGR is lower (39.8% vs 40.4%), its Sharpe is lower (1.13 vs 1.19), and its maximum drawdown is shallower (-42.4% vs -45.0%). The rules gave up total return relative to holding the basket in exchange for a better risk-adjusted profile.
+Against equal-weight buy-and-hold of the same basket the strategy's CAGR is lower (39.9% vs 40.4%), its Sharpe is lower (1.13 vs 1.19), and its maximum drawdown is shallower (-42.3% vs -45.0%). The rules gave up total return relative to holding the basket in exchange for a better risk-adjusted profile.
 
-VaR note: parametric (normal) 99% VaR is 4.6% against a historical 5.5%; daily excess kurtosis is 4.71. The normal assumption understates the tail.
+VaR note: parametric (normal) 99% VaR is 4.6% against a historical 5.5%; daily excess kurtosis is 4.70. The normal assumption understates the tail.
 
 ## Turnover attribution
 
@@ -109,10 +109,10 @@ Macro gate: 34 state transitions over 611 signal dates (2.9 per year); 0 of them
 
 |  | In EUR | In local currencies |
 |---|---:|---:|
-| Total return | 4883.6% | 4896.5% |
-| CAGR | 39.8% | 39.8% |
+| Total return | 4942.4% | 4973.8% |
+| CAGR | 39.9% | 40.0% |
 
-FX contribution: -0.0% per year of CAGR; in total the EUR result differs from the local-currency result by -12.9% of initial capital. Positions are unhedged KRW and USD exposure held by a EUR investor.
+FX contribution: -0.1% per year of CAGR; in total the EUR result differs from the local-currency result by -31.4% of initial capital. Positions are unhedged KRW and USD exposure held by a EUR investor.
 
 ## Largest drawdowns
 
@@ -120,8 +120,8 @@ FX contribution: -0.0% per year of CAGR; in total the EUR result differs from th
 
 | Depth | Peak | Trough | Recovery | Duration (days) |
 |---|---:|---:|---:|---:|
-| -42.4% | 2024-06-18 | 2025-04-21 | 2025-07-17 | 394 |
-| -37.1% | 2021-12-27 | 2022-12-28 | 2023-06-14 | 534 |
+| -42.3% | 2024-06-18 | 2025-04-21 | 2025-07-17 | 394 |
+| -36.8% | 2021-12-27 | 2022-12-28 | 2023-05-26 | 515 |
 | -33.8% | 2020-02-19 | 2020-03-16 | 2021-04-05 | 411 |
 | -32.2% | 2026-06-02 | 2026-07-29 | not recovered | 101 |
 | -27.7% | 2015-04-24 | 2015-08-24 | 2015-12-01 | 221 |

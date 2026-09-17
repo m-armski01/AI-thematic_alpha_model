@@ -65,35 +65,35 @@ Average cross-sectional rank of the held names: **3.55** (exit rank 8, top 5; pl
 
 | Metric | Strategy | S&P 500 (SPY) B&H | Equal-weight B&H (universe) | Naive momentum (top-N) |
 |---|---:|---:|---:|---:|
-| Total return | 91.9% | 364.5% | 339.6% | 204.7% |
-| CAGR | 5.7% | 14.1% | 13.5% | 10.0% |
+| Total return | 95.3% | 364.5% | 339.6% | 204.7% |
+| CAGR | 5.9% | 14.1% | 13.5% | 10.0% |
 | Annualized volatility | 16.1% | 18.6% | 16.9% | 17.1% |
-| Sharpe (excess over DTB3) | 0.30 | 0.69 | 0.71 | 0.52 |
-| Sortino (MAR 0) | 0.41 | 0.96 | 1.00 | 0.72 |
+| Sharpe (excess over DTB3) | 0.31 | 0.69 | 0.71 | 0.52 |
+| Sortino (MAR 0) | 0.42 | 0.96 | 1.00 | 0.72 |
 | Max drawdown | -30.5% | -33.5% | -29.9% | -27.0% |
 | Max DD peak | 2020-02-19 | 2020-02-19 | 2020-02-19 | 2020-02-19 |
 | Max DD trough | 2020-03-16 | 2020-03-23 | 2020-03-23 | 2020-03-23 |
-| Max DD recovery | 2024-01-23 | 2021-01-07 | 2021-01-08 | 2021-01-12 |
-| Max DD duration (days) | 1,434 | 323 | 324 | 328 |
+| Max DD recovery | 2024-01-19 | 2021-01-07 | 2021-01-08 | 2021-01-12 |
+| Max DD duration (days) | 1,430 | 323 | 324 | 328 |
 | Calmar | 0.19 | 0.42 | 0.45 | 0.37 |
-| Alpha vs S&P 500 (ann.) | -4.3% | -0.1% | 0.6% | -1.1% |
+| Alpha vs S&P 500 (ann.) | -4.1% | -0.1% | 0.6% | -1.1% |
 | Beta vs S&P 500 | 0.70 | 1.00 | 0.89 | 0.77 |
 | Historical VaR 95% (daily) | 1.6% | 1.7% | 1.6% | 1.7% |
 | Historical VaR 99% (daily) | 3.0% | 3.3% | 2.9% | 3.2% |
 | Parametric VaR 95% (daily) | 1.6% | 1.9% | 1.7% | 1.7% |
 | Parametric VaR 99% (daily) | 2.3% | 2.7% | 2.4% | 2.5% |
 | CVaR / ES 95% (daily) | 2.5% | 2.9% | 2.6% | 2.6% |
-| Excess kurtosis (daily) | 9.00 | 10.87 | 9.36 | 4.17 |
-| Hit rate (weekly periods) | 56.0% | 60.3% | 59.3% | 57.6% |
-| Average win (weekly period) | 1.4% | 1.7% | 1.6% | 1.6% |
+| Excess kurtosis (daily) | 9.01 | 10.87 | 9.36 | 4.17 |
+| Hit rate (weekly periods) | 59.4% | 60.3% | 59.3% | 57.6% |
+| Average win (weekly period) | 1.3% | 1.7% | 1.6% | 1.6% |
 | Average loss (weekly period) | -1.6% | -1.8% | -1.6% | -1.7% |
 | Annualized turnover | 9.75 | 0.09 | 0.23 | 22.98 |
-| Total costs paid | 1,142.67 | 7.99 | 23.80 | 3,403.97 |
-| Costs as % of final equity | 5.95% | 0.02% | 0.05% | 11.17% |
+| Total costs paid | 1,149.91 | 7.99 | 23.80 | 3,403.97 |
+| Costs as % of final equity | 5.89% | 0.02% | 0.05% | 11.17% |
 
-Against equal-weight buy-and-hold of the same basket the strategy's CAGR is lower (5.7% vs 13.5%), its Sharpe is lower (0.30 vs 0.71), and its maximum drawdown is deeper (-30.5% vs -29.9%). **This is an underperformance result**: the rules did not add value over simply holding the (hindsight-selected) basket, net of costs.
+Against equal-weight buy-and-hold of the same basket the strategy's CAGR is lower (5.9% vs 13.5%), its Sharpe is lower (0.31 vs 0.71), and its maximum drawdown is deeper (-30.5% vs -29.9%). **This is an underperformance result**: the rules did not add value over simply holding the (hindsight-selected) basket, net of costs.
 
-VaR note: parametric (normal) 99% VaR is 2.3% against a historical 3.0%; daily excess kurtosis is 9.00. The normal assumption understates the tail.
+VaR note: parametric (normal) 99% VaR is 2.3% against a historical 3.0%; daily excess kurtosis is 9.01. The normal assumption understates the tail.
 
 ## Turnover attribution
 
@@ -114,10 +114,10 @@ Macro gate: 34 state transitions over 611 signal dates (2.9 per year); 0 of them
 
 |  | In EUR | In local currencies |
 |---|---:|---:|
-| Total return | 91.9% | 95.8% |
-| CAGR | 5.7% | 5.9% |
+| Total return | 95.3% | 99.2% |
+| CAGR | 5.9% | 6.1% |
 
-FX contribution: -0.2% per year of CAGR; in total the EUR result differs from the local-currency result by -3.8% of initial capital. Positions are unhedged USD exposure held by a EUR investor.
+FX contribution: -0.2% per year of CAGR; in total the EUR result differs from the local-currency result by -3.9% of initial capital. Positions are unhedged USD exposure held by a EUR investor.
 
 ## Largest drawdowns
 
@@ -125,11 +125,11 @@ FX contribution: -0.2% per year of CAGR; in total the EUR result differs from th
 
 | Depth | Peak | Trough | Recovery | Duration (days) |
 |---|---:|---:|---:|---:|
-| -30.5% | 2020-02-19 | 2020-03-16 | 2024-01-23 | 1,434 |
+| -30.5% | 2020-02-19 | 2020-03-16 | 2024-01-19 | 1,430 |
 | -25.2% | 2015-03-19 | 2016-02-11 | 2017-11-08 | 965 |
 | -19.0% | 2025-02-10 | 2025-04-08 | 2025-11-26 | 289 |
 | -16.3% | 2018-10-03 | 2018-12-24 | 2019-08-15 | 316 |
-| -11.6% | 2024-07-10 | 2024-08-05 | 2025-02-04 | 209 |
+| -11.6% | 2024-07-10 | 2024-08-05 | 2025-02-03 | 208 |
 
 **Equal-weight B&H (universe)**
 

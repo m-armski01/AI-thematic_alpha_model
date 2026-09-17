@@ -323,7 +323,7 @@ def run_backtests(
         logger.info(
             "idle cash earns %s: mean %.2f%% p.a. over the window",
             config.risk.rf_series,
-            100 * bundle.macro[config.risk.rf_series].reindex(idx).mean(),
+            bundle.macro[config.risk.rf_series].reindex(idx).mean(),
         )
 
     def _run(close, open_, targets, band: float = 0.0):
