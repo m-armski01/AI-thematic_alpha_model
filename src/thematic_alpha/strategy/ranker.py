@@ -24,7 +24,7 @@ import pandas as pd
 
 from thematic_alpha.config import RankerConfig
 
-SIGNAL = "mom_63"
+DEFAULT_SIGNAL = "mom_63"  # Layer 1 ranking signal; the config knob is ranker.momentum_signal
 VOL = "vol_21"
 
 
@@ -87,7 +87,7 @@ def rank(wide: dict[str, pd.DataFrame], eligible: pd.DataFrame, cfg: RankerConfi
     """date x ticker weights summing to 1 on each date with at least one eligible name."""
     if cfg.method == "equal_weight":
         return weight_selected(eligible.astype(float).where(eligible), "equal", [])
-    score = zscore_rows(wide[SIGNAL], eligible)
+    score = zscore_rows(wide[cfg.momentum_signal], eligible)
     position = select_top_n(score, cfg.top_n)
     return weight_selected(
         position,
@@ -100,10 +100,13 @@ def rank(wide: dict[str, pd.DataFrame], eligible: pd.DataFrame, cfg: RankerConfi
 
 
 def naive_momentum(
-    wide: dict[str, pd.DataFrame], eligible: pd.DataFrame, top_n: int
+    wide: dict[str, pd.DataFrame],
+    eligible: pd.DataFrame,
+    top_n: int,
+    signal: str = DEFAULT_SIGNAL,
 ) -> pd.DataFrame:
-    """Benchmark 3 (SPEC §1D): equal-weight top-N by mom_63, no gate, no mask."""
-    position = select_top_n(wide[SIGNAL].where(eligible), top_n)
+    """Benchmark 3 (SPEC §1D): equal-weight top-N by the momentum signal, no gate, no mask."""
+    position = select_top_n(wide[signal].where(eligible), top_n)
     return weight_selected(position, "equal", [])
 
 
@@ -159,7 +162,7 @@ def rank_on_signal_dates(
         positions = weights.where(weights > 0).rank(axis=1, ascending=False, method="first")
         held = pd.Series(np.nan, index=signal_dates, name="held_rank")
         return RankResult(weights=weights, positions=positions, held_rank=held)
-    score = zscore_rows(wide[SIGNAL], eligible)
+    score = zscore_rows(wide[cfg.momentum_signal], eligible)
     if cfg.exit_rank is None:
         positions = select_top_n(score, cfg.top_n).loc[signal_dates]
     else:

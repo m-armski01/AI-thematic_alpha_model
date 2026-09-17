@@ -345,7 +345,11 @@ def run_backtests(
         "sp500": single_asset_targets(market, dates.min()),
         "equal_weight_bh": buy_and_hold_targets(features.eligible, dates),
         "naive_momentum": naive_momentum_targets(
-            features.wide, features.eligible, dates, config.ranker.top_n
+            features.wide,
+            features.eligible,
+            dates,
+            config.ranker.top_n,
+            config.ranker.momentum_signal,
         ),
     }
     results = {STRATEGY: _run(close_base, open_base, strategy.target_weights, band)}

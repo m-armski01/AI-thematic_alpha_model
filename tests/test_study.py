@@ -18,6 +18,7 @@ def test_variant_declarations_cover_the_brief():
     assert keys[-1 - 2 - 3 : -2] == [f"only_{k}" for _, k, _ in study.KNOBS][-1:] or True
     assert {f"only_{k}" for _, k, _ in study.KNOBS} <= set(keys)
     assert {"softmax_0.5", "softmax_1", "softmax_2", "no_gate", "no_screen"} <= set(keys)
+    assert {"signal_mom_126", "signal_mom_252"} <= set(keys) and "signal_mom_63" not in keys
     assert study.CHOSEN_KEY == "cum_monthly" and keys.count(study.CHOSEN_KEY) == 1
 
 

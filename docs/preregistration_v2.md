@@ -21,6 +21,7 @@ configs share every chosen value, the window and the costs.
 | Parameter | Neutral (= Layer 1) | Chosen | Rationale |
 |---|---|---|---|
 | `ranker.weighting` | `conviction_tier` (30/25/20/15/10%) | `equal` | Rank-tier weights re-trade every rank swap inside the held set (a swap between ranks 1 and 2 moves 5 pp on each name); equal weight makes a swap free. 1/N is the standard robustness benchmark for small baskets (DeMiguel, Garlappi & Uppal 2009 make the case that estimation error swamps the gain from optimised weights). Set from standard practice, not optimised. |
+| `ranker.momentum_signal` | `mom_63` | `mom_63`; sensitivity `mom_126`, `mom_252` | The ranking signal was hard-coded to 3-month momentum with a 5-day skip until 2026-09-17; the knob makes it explicit. 3-month is the standard intermediate-horizon signal for a weekly-rebalanced book; 12-1 (`mom_252` with the skip) is the academic convention (Jegadeesh & Titman 1993; Carhart 1997) and 6-month sits between. The three are declared as a sensitivity set in the study, reported side by side, and none is promoted. Set from standard practice, not optimised. |
 | `ranker.softmax_temperature` (τ) | 1.0 (unused unless `weighting: softmax`) | 1.0; sensitivity τ ∈ {0.5, 1, 2} | Softmax over the held names' momentum z-scores spans the concentration spectrum from equal weight (τ → ∞) to winner-take-all (τ → 0); the three values are declared as a sensitivity set, reported next to each other, and none is promoted to the chosen config. Set from standard practice, not optimised. |
 | `ranker.exit_rank` | `None` (→ `top_n` = 5) | 8 | A rank buffer (enter at ≤ 5, exit only below 8) is the standard turnover control in rank-based index construction and momentum-index methodology (buffer rules). 8 = top_n + 3 keeps a name through the ordinary rank noise of a 12-to-17-name cross-section without letting it fall into the bottom third. The signal-quality cost is reported as the average rank of held names next to every turnover figure. Set from standard practice, not optimised. |
 | `turnover.position_band` | 0.0 | 0.02 | A held name is not re-traded while its drifted weight is within 2 pp of target. At a 20% average position this is a 10%-relative no-trade band, the conventional rebalancing tolerance in institutional rebalancing policy. Full exits and new entries always trade. Set from standard practice, not optimised. |
@@ -60,6 +61,9 @@ universes, same window (2015-01-01 → 2026-09-11) and costs (5 bps/side + 3 bps
 - **One-at-a-time**: each knob alone on the L1 baseline.
 - **Sensitivity**: softmax τ ∈ {0.5, 1, 2} in place of equal weight in the chosen config, with
   effective N (1/Σw²) and average cash from the 35% cap.
+- **Sensitivity (momentum window)**: `ranker.momentum_signal` ∈ {`mom_63` (chosen), `mom_126`,
+  `mom_252`} on the chosen config, reported side by side; nothing is promoted (added 2026-09-17,
+  before the run that uses it).
 - **Reference**: the chosen config with the macro gate disabled.
 
 Reported per row: CAGR, Sharpe, max drawdown, annual turnover and turnover by cause, costs as %

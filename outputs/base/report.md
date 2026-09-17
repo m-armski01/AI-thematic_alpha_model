@@ -90,7 +90,7 @@ In the VIX stress regime (13.2% of sessions) the overlay returns 73.1% against 1
 | Execution | t + 1 session at the open |
 | Costs | model=bps, 5 bps/side + 3 bps slippage, flat 1 EUR |
 | Idle cash | earns DTB3 (calendar-day accrual), all runs |
-| Ranker | momentum_zscore, top 5 (exit rank 8), equal |
+| Ranker | momentum_zscore on mom_63, top 5 (exit rank 8), equal |
 | Macro gate | block increases while any sub-gate is engaged (VIX>25 (release 20); 10y +40bp (release 32bp)/21d; WTI +20% (release 16%)/21d); exempt segments: defensive; scale factors and floor unused; evaluated monthly |
 | Event mask | block new exposure 3 sessions before earnings (on) |
 | Sizing | max weight 0.35, cash floor 0 |

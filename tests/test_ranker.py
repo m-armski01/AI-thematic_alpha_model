@@ -132,3 +132,15 @@ def test_softmax_limits_equal_weight_and_winner_take_all():
 def test_softmax_config_rejects_nonpositive_temperature():
     with pytest.raises(ValueError):
         make_config(ranker={"weighting": "softmax", "softmax_temperature": 0.0})
+
+
+def test_ranker_reads_the_configured_momentum_signal():
+    wide = _wide([[1, 2, 3, 4, 5, 6]] * 2)
+    wide["mom_126"] = -wide["mom_63"]  # opposite ordering
+    cfg = make_config().ranker.model_copy(update={"weighting": "equal", "top_n": 2})
+    top_63 = ranker.rank(wide, ALL, cfg).iloc[0]
+    top_126 = ranker.rank(wide, ALL, cfg.model_copy(update={"momentum_signal": "mom_126"})).iloc[0]
+    assert set(top_63[top_63 > 0].index) == {"E", "F"}
+    assert set(top_126[top_126 > 0].index) == {"A", "B"}
+    nm = ranker.naive_momentum(wide, ALL, top_n=2, signal="mom_126").iloc[0]
+    assert set(nm[nm > 0].index) == {"A", "B"}

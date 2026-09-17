@@ -287,7 +287,7 @@ def make_bundle(market: Market, benchmarks: list[str] | None = None):
 # Layer 1 values of every knob that later layers add. The golden regression test pins these
 # explicitly so it keeps reproducing Layer 1 after the YAML configs move to the chosen values.
 LAYER1_NEUTRAL: dict[str, dict] = {
-    "ranker": {"weighting": "conviction_tier", "exit_rank": None},
+    "ranker": {"weighting": "conviction_tier", "exit_rank": None, "momentum_signal": "mom_63"},
     "macro_gate": {
         "enabled": True,
         "combination": "multiplicative",
@@ -306,7 +306,7 @@ LAYER1_NEUTRAL: dict[str, dict] = {
 
 # The chosen (preregistered) values of the same knobs, for tests that must pass with them on.
 CHOSEN: dict[str, dict] = {
-    "ranker": {"weighting": "equal", "exit_rank": 8},
+    "ranker": {"weighting": "equal", "exit_rank": 8, "momentum_signal": "mom_63"},
     "turnover": {"position_band": 0.02},
     "data": {"min_dollar_volume_21d": 5_000_000.0},
     "backtest": {"cash_earns_rf": True},

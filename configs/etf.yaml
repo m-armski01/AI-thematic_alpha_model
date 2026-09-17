@@ -49,6 +49,7 @@ macro_gate:
 
 ranker:
   method: "momentum_zscore"      # momentum_zscore | equal_weight
+  momentum_signal: "mom_63"     # ranking feature; sensitivity set in the study: mom_126, mom_252
   top_n: 5
   exit_rank: 8                   # rank buffer: enter at <= top_n, exit below this (L1: null = top_n)
   weighting: "equal"             # equal | inverse_vol | conviction_tier | softmax (L1: conviction_tier)

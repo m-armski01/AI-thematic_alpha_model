@@ -498,7 +498,8 @@ def render_report(
         ],
         [
             "Ranker",
-            f"{config.ranker.method}, top {config.ranker.top_n} (exit rank "
+            f"{config.ranker.method} on {config.ranker.momentum_signal}, top "
+            f"{config.ranker.top_n} (exit rank "
             f"{config.ranker.effective_exit_rank}), {config.ranker.weighting}"
             + (
                 f" (τ={config.ranker.softmax_temperature:g})"

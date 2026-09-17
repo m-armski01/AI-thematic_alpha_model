@@ -67,7 +67,10 @@ KNOBS: list[tuple[str, str, dict]] = [
 ]
 
 
-CHOSEN_KEY = "cum_monthly"  # the last cumulative step equals the chosen config
+CHOSEN_KEY = "cum_monthly"
+# Momentum-window sensitivity set: the chosen mom_63 next to 6- and 12-month (12-1 style)
+# signals. Declared, reported side by side, nothing promoted.
+SIGNAL_WINDOWS = (63, 126, 252)  # the last cumulative step equals the chosen config
 
 
 @dataclass
@@ -105,6 +108,16 @@ def variants() -> list[Variant]:
                 f"chosen with softmax τ={tau:g}",
                 "sensitivity",
                 {"ranker": {"weighting": "softmax", "softmax_temperature": tau}},
+                base="chosen",
+            )
+        )
+    for window in SIGNAL_WINDOWS[1:]:
+        out.append(
+            Variant(
+                f"signal_mom_{window}",
+                f"chosen with momentum signal mom_{window}",
+                "sensitivity",
+                {"ranker": {"momentum_signal": f"mom_{window}"}},
                 base="chosen",
             )
         )
@@ -193,10 +206,11 @@ class UniverseStudy:
 def run_universe(config: Config, root: Path, refresh: bool = False) -> UniverseStudy:
     t0 = time.perf_counter()
     bundle = pipeline.load_data(config, root, refresh=refresh)
-    features_cache: dict[float, pipeline.FeaturePanel] = {}
+    features_cache: dict[tuple[float, str], pipeline.FeaturePanel] = {}
 
     def features_for(cfg: Config) -> pipeline.FeaturePanel:
-        key = cfg.data.min_dollar_volume_21d
+        # Eligibility and the rank diagnostic depend on the screen and on the ranking signal.
+        key = (cfg.data.min_dollar_volume_21d, cfg.ranker.momentum_signal)
         if key not in features_cache:
             features_cache[key] = pipeline.build_features(bundle, cfg)
         return features_cache[key]
@@ -321,6 +335,25 @@ def selection_verdict(stock: dict, etf: dict, stock_ew: dict, etf_ew: dict) -> s
             else "The rules interact with the universe: the gap between the two overlay runs is "
             "larger than the gap between the two buy-and-holds."
         )
+    )
+
+
+def signal_sensitivity(rows: pd.DataFrame, chosen_key: str) -> str:
+    """Momentum-window sensitivity set, reported side by side; no winner is promoted."""
+    keys = [chosen_key, *[f"signal_mom_{w}" for w in SIGNAL_WINDOWS[1:]]]
+    if not all(k in rows.index for k in keys):
+        return ""
+    windows = " / ".join(str(w) for w in SIGNAL_WINDOWS)
+    return (
+        f"Momentum window ({windows} sessions, 5-day skip): CAGR "
+        + ", ".join(fmt_pct(rows.loc[k, "cagr"]) for k in keys)
+        + "; Sharpe "
+        + ", ".join(fmt_num(rows.loc[k, "sharpe"]) for k in keys)
+        + "; max drawdown "
+        + ", ".join(fmt_pct(rows.loc[k, "max_drawdown"]) for k in keys)
+        + "; turnover "
+        + ", ".join(fmt_num(rows.loc[k, "ann_turnover"]) for k in keys)
+        + "x. A sensitivity set, declared before the run; the chosen 63-day signal stays."
     )
 
 
@@ -561,8 +594,9 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
     lines += [
         "Rows are declared in `study.py` (`L1`, `KNOBS`, `variants()`): the L1 baseline, the "
         "cumulative chain in "
-        "the brief's order, each knob alone on the baseline, the softmax sensitivity set on the "
-        "chosen config, and two references (gate disabled; liquidity screen off). The "
+        "the brief's order, each knob alone on the baseline, the softmax and momentum-window "
+        "sensitivity sets on the chosen config, and two references (gate disabled; liquidity "
+        "screen off). The "
         "liquidity screen is part of the universe definition and stays on in every other row; "
         "note that the screen also changes the equal-weight buy-and-hold (re-equalized on every "
         "eligibility change), so the screen-off row is not comparable to the benchmark table "
@@ -590,7 +624,8 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
             + ", ".join(fmt_num(r.loc[f"softmax_{t:g}", "sharpe"]) for t in (0.5, 1.0, 2.0))
             + ", effective N "
             + ", ".join(fmt_num(r.loc[f"softmax_{t:g}", "effective_n"], 1) for t in (0.5, 1.0, 2.0))
-            + f" (equal weight: {fmt_num(ch['effective_n'], 1)}).",
+            + f" (equal weight: {fmt_num(ch['effective_n'], 1)}). "
+            + signal_sensitivity(r, st.chosen_key),
             "",
         ]
 

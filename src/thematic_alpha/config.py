@@ -120,6 +120,9 @@ class MacroGateConfig(_Base):
 
 class RankerConfig(_Base):
     method: Literal["momentum_zscore", "equal_weight"] = "momentum_zscore"
+    # The momentum feature the ranker (and the naive-momentum benchmark) sorts on. Must be one
+    # of the computed ``mom_<window>`` features (``features.momentum_windows``). Layer 1: mom_63.
+    momentum_signal: str = "mom_63"
     top_n: int = Field(gt=0)
     weighting: Literal["equal", "inverse_vol", "conviction_tier", "softmax"] = "conviction_tier"
     conviction_tiers: list[float]
@@ -229,6 +232,16 @@ class Config(_Base):
     costs: CostsConfig
     risk: RiskConfig
     report: ReportConfig = ReportConfig()
+
+    @model_validator(mode="after")
+    def _momentum_signal_is_computed(self) -> Config:
+        allowed = [f"mom_{w}" for w in self.features.momentum_windows]
+        if self.ranker.momentum_signal not in allowed:
+            raise ValueError(
+                f"ranker.momentum_signal={self.ranker.momentum_signal!r} is not one of the "
+                f"computed momentum features {allowed} (features.momentum_windows)"
+            )
+        return self
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Config:

@@ -50,3 +50,18 @@ def test_conviction_tiers_must_cover_top_n(base_config_path):
     raw["ranker"]["top_n"] = 10  # more than the 5 conviction tiers provided
     with pytest.raises(ValidationError):
         Config.model_validate(raw)
+
+
+def test_momentum_signal_must_be_a_computed_feature(base_config_path):
+    import pytest as _pytest
+
+    from thematic_alpha.config import Config
+
+    cfg = Config.from_yaml(base_config_path)
+    assert cfg.ranker.momentum_signal == "mom_63"
+    raw = cfg.model_dump()
+    raw["ranker"]["momentum_signal"] = "mom_500"
+    with _pytest.raises(ValueError, match="momentum_signal"):
+        Config.model_validate(raw)
+    raw["ranker"]["momentum_signal"] = "mom_252"
+    assert Config.model_validate(raw).ranker.momentum_signal == "mom_252"

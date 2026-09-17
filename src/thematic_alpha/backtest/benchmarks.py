@@ -5,7 +5,8 @@
 2. ``equal_weight_bh`` — equal-weight buy-and-hold of the universe. The critical benchmark.
                          Re-equalized only on signal dates where the eligible set changes
                          (a new listing crossing ``min_history_days``); otherwise untouched.
-3. ``naive_momentum``  — equal-weight top-N by ``mom_63`` every signal date, no gate, no mask.
+3. ``naive_momentum``  — equal-weight top-N by the ranker's momentum signal every signal date,
+                         no gate, no mask.
 """
 
 from __future__ import annotations
@@ -37,5 +38,6 @@ def naive_momentum_targets(
     eligible: pd.DataFrame,
     signal_dates: pd.DatetimeIndex,
     top_n: int,
+    signal: str = "mom_63",
 ) -> pd.DataFrame:
-    return naive_momentum(wide, eligible, top_n).reindex(signal_dates).fillna(0.0)
+    return naive_momentum(wide, eligible, top_n, signal).reindex(signal_dates).fillna(0.0)

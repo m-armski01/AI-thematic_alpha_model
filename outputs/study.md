@@ -48,7 +48,7 @@ In block mode a blocked entry that executes after the release counts as membersh
 
 ## 4. Ablation
 
-Rows are declared in `study.py` (`L1`, `KNOBS`, `variants()`): the L1 baseline, the cumulative chain in the brief's order, each knob alone on the baseline, the softmax sensitivity set on the chosen config, and two references (gate disabled; liquidity screen off). The liquidity screen is part of the universe definition and stays on in every other row; note that the screen also changes the equal-weight buy-and-hold (re-equalized on every eligibility change), so the screen-off row is not comparable to the benchmark table above. Nothing here was used to change a chosen value.
+Rows are declared in `study.py` (`L1`, `KNOBS`, `variants()`): the L1 baseline, the cumulative chain in the brief's order, each knob alone on the baseline, the softmax and momentum-window sensitivity sets on the chosen config, and two references (gate disabled; liquidity screen off). The liquidity screen is part of the universe definition and stays on in every other row; note that the screen also changes the equal-weight buy-and-hold (re-equalized on every eligibility change), so the screen-off row is not comparable to the benchmark table above. Nothing here was used to change a chosen value.
 
 | Universe | Variant | CAGR | Sharpe | Max DD | Turnover | member. | drift | gate | reweight | Costs %eq | Held rank | Gate tr./yr | Avg cash | Eff. N |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -68,6 +68,8 @@ Rows are declared in `study.py` (`L1`, `KNOBS`, `variants()`): the L1 baseline, 
 | etf | chosen with softmax τ=0.5 | 1.5% | 0.02 | -25.2% | 14.63 | 4.68 | 0.26 | 0.09 | 9.60 | 11.25% | 3.55 | 2.9 | 39% | 2.6 |
 | etf | chosen with softmax τ=1 | 2.8% | 0.12 | -28.0% | 14.42 | 6.79 | 0.32 | 0.08 | 7.24 | 10.49% | 3.55 | 2.9 | 24% | 3.5 |
 | etf | chosen with softmax τ=2 | 4.4% | 0.22 | -28.9% | 12.75 | 8.26 | 0.44 | 0.05 | 4.00 | 8.43% | 3.55 | 2.9 | 16% | 4.1 |
+| etf | chosen with momentum signal mom_126 | 12.0% | 0.61 | -31.0% | 4.40 | 4.29 | 0.11 | 0.00 | 0.00 | 2.08% | 3.55 | 2.9 | 8% | 4.6 |
+| etf | chosen with momentum signal mom_252 | 13.1% | 0.68 | -24.5% | 2.76 | 2.63 | 0.13 | 0.00 | 0.00 | 1.19% | 3.46 | 2.9 | 7% | 4.7 |
 | etf | chosen with the macro gate disabled | 9.9% | 0.50 | -30.5% | 10.70 | 10.57 | 0.13 | 0.00 | 0.00 | 5.24% | 3.55 | 0.0 | 0% | 5.0 |
 | etf | chosen with the liquidity screen off | 6.2% | 0.33 | -30.5% | 9.59 | 9.49 | 0.09 | 0.00 | 0.00 | 5.80% | 3.55 | 2.9 | 14% | 4.5 |
 | base | L1 baseline (tiers, top-N, no band, gate scale/weekly) | 37.7% | 1.08 | -50.5% | 18.77 | 9.18 | 0.97 | 1.75 | 6.87 | 2.61% | 3.00 | 7.5 | 8% | 4.4 |
@@ -86,14 +88,16 @@ Rows are declared in `study.py` (`L1`, `KNOBS`, `variants()`): the L1 baseline, 
 | base | chosen with softmax τ=0.5 | 23.4% | 0.87 | -33.8% | 10.85 | 1.64 | 0.58 | 0.26 | 8.37 | 2.48% | 3.82 | 2.9 | 46% | 2.3 |
 | base | chosen with softmax τ=1 | 31.7% | 1.00 | -39.5% | 10.15 | 2.31 | 0.69 | 0.23 | 6.93 | 1.64% | 3.82 | 2.9 | 28% | 3.3 |
 | base | chosen with softmax τ=2 | 37.5% | 1.07 | -44.5% | 8.13 | 2.91 | 0.78 | 0.19 | 4.26 | 1.10% | 3.82 | 2.9 | 15% | 4.1 |
+| base | chosen with momentum signal mom_126 | 43.8% | 1.17 | -45.1% | 2.73 | 2.12 | 0.59 | 0.00 | 0.02 | 0.41% | 3.82 | 2.9 | 7% | 4.7 |
+| base | chosen with momentum signal mom_252 | 40.4% | 1.07 | -51.4% | 2.20 | 1.48 | 0.65 | 0.00 | 0.08 | 0.37% | 3.73 | 2.9 | 5% | 4.8 |
 | base | chosen with the macro gate disabled | 41.5% | 1.13 | -49.1% | 4.63 | 3.81 | 0.63 | 0.00 | 0.19 | 0.64% | 3.82 | 0.0 | 1% | 5.0 |
 | base | chosen with the liquidity screen off | 43.7% | 1.21 | -42.3% | 4.19 | 3.41 | 0.60 | 0.00 | 0.17 | 0.56% | 3.81 | 2.9 | 10% | 4.6 |
 
 **Gate comparability across universes.** TLT and GLD change what the gate is measuring. With defensive assets in the universe, risk-off rotation can happen through the ranker: momentum simply selects bonds or gold, and the gate never has to force cash. The two mechanisms partly substitute for each other, so the gate's measured contribution on the ETF universe (the block, Schmitt and monthly rows, and the gate-disabled reference) is **not directly comparable** to its contribution on the stock universe, where the gate is the only risk-off mechanism. The `defensive` segment is exempt from the block rule, which is exactly what lets that substitution happen while the gate is risk-off.
 
-etf: the single knob that cuts turnover most on its own is *L1 + hysteresis (exit rank 8) only* (25.00x → 18.03x). L1 → chosen: Sharpe 0.34 → 0.31, CAGR 6.4% → 5.9%, max drawdown -21.0% → -30.5%. Gate disabled: Sharpe 0.50, so the gate subtracts 0.20 of Sharpe on this universe. Softmax τ ∈ {0.5, 1, 2}: Sharpe 0.02, 0.12, 0.22, effective N 2.6, 3.5, 4.1 (equal weight: 4.5).
+etf: the single knob that cuts turnover most on its own is *L1 + hysteresis (exit rank 8) only* (25.00x → 18.03x). L1 → chosen: Sharpe 0.34 → 0.31, CAGR 6.4% → 5.9%, max drawdown -21.0% → -30.5%. Gate disabled: Sharpe 0.50, so the gate subtracts 0.20 of Sharpe on this universe. Softmax τ ∈ {0.5, 1, 2}: Sharpe 0.02, 0.12, 0.22, effective N 2.6, 3.5, 4.1 (equal weight: 4.5). Momentum window (63 / 126 / 252 sessions, 5-day skip): CAGR 5.9%, 12.0%, 13.1%; Sharpe 0.31, 0.61, 0.68; max drawdown -30.5%, -31.0%, -24.5%; turnover 9.75, 4.40, 2.76x. A sensitivity set, declared before the run; the chosen 63-day signal stays.
 
-base: the single knob that cuts turnover most on its own is *L1 + hysteresis (exit rank 8) only* (18.77x → 12.65x). L1 → chosen: Sharpe 1.08 → 1.13, CAGR 37.7% → 39.9%, max drawdown -50.5% → -42.3%. Gate disabled: Sharpe 1.13, so the gate adds 0.00 of Sharpe on this universe. Softmax τ ∈ {0.5, 1, 2}: Sharpe 0.87, 1.00, 1.07, effective N 2.3, 3.3, 4.1 (equal weight: 4.7).
+base: the single knob that cuts turnover most on its own is *L1 + hysteresis (exit rank 8) only* (18.77x → 12.65x). L1 → chosen: Sharpe 1.08 → 1.13, CAGR 37.7% → 39.9%, max drawdown -50.5% → -42.3%. Gate disabled: Sharpe 1.13, so the gate adds 0.00 of Sharpe on this universe. Softmax τ ∈ {0.5, 1, 2}: Sharpe 0.87, 1.00, 1.07, effective N 2.3, 3.3, 4.1 (equal weight: 4.7). Momentum window (63 / 126 / 252 sessions, 5-day skip): CAGR 39.9%, 43.8%, 40.4%; Sharpe 1.13, 1.17, 1.07; max drawdown -42.3%, -45.1%, -51.4%; turnover 4.14, 2.73, 2.20x. A sensitivity set, declared before the run; the chosen 63-day signal stays.
 
 ## 5. Universe composition over time (ETF universe)
 

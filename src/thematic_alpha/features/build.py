@@ -21,8 +21,7 @@ from thematic_alpha.data.prices import PricePanel
 from thematic_alpha.features.macro_features import MacroFeatureSpec, compute_macro_features
 from thematic_alpha.features.price_features import PriceFeatureSpec, compute_price_features
 
-RANK_MOMENTUM = "mom_63"
-RANK_VOL = "vol_21"
+RANK_VOL = "vol_21"  # the ranking momentum feature is config.ranker.momentum_signal
 
 
 @dataclass
@@ -140,14 +139,15 @@ def build_feature_panel(
         tickers,
         spec,
     )
-    if RANK_MOMENTUM not in wide or RANK_VOL not in wide:
+    rank_momentum = config.ranker.momentum_signal
+    if rank_momentum not in wide or RANK_VOL not in wide:
         raise ValueError(
-            f"config.features must include the ranking windows: {RANK_MOMENTUM}, {RANK_VOL}"
+            f"config.features must include the ranking windows: {rank_momentum}, {RANK_VOL}"
         )
     eligible = eligibility(
         wide["history_days"],
         config.data.min_history_days,
-        wide[RANK_MOMENTUM],
+        wide[rank_momentum],
         wide[RANK_VOL],
         dollar_volume_21d=wide["dollar_volume_21d"],
         min_dollar_volume_21d=config.data.min_dollar_volume_21d,
@@ -161,7 +161,7 @@ def build_feature_panel(
         config.data.min_history_days,
         config.data.min_dollar_volume_21d,
     )
-    wide["mom_rank"] = cross_sectional_rank(wide[RANK_MOMENTUM], eligible)
+    wide["mom_rank"] = cross_sectional_rank(wide[rank_momentum], eligible)
     wide["vol_rank"] = cross_sectional_rank(wide[RANK_VOL], eligible)
 
     macro_feats = compute_macro_features(
