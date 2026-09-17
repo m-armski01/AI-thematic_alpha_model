@@ -1,8 +1,7 @@
-# Point-in-time ETF universe (brief v2). Identical to configs/base.yaml (the 12-stock control)
+# Point-in-time ETF universe (brief v2). Identical to configs/base.yaml (the 12-stock basket)
 # in every chosen turnover and gate setting, window, costs, base currency and top_n; it differs
 # only in run.name, the universe file, the benchmark list, the selection framing, and the
-# event-mask / house-money flags (both off: ETFs report no earnings, and the house-money rule is
-# not implemented).
+# event-mask flag (off: ETFs report no earnings).
 run:
   name: "etf_2026ytd"
   seed: 42
@@ -49,7 +48,7 @@ macro_gate:
   evaluation: "monthly"          # weekly | monthly: gate sampled on the last signal date of each month (L1: weekly)
 
 ranker:
-  method: "momentum_zscore"      # momentum_zscore | equal_weight | ml
+  method: "momentum_zscore"      # momentum_zscore | equal_weight
   top_n: 5
   exit_rank: 8                   # rank buffer: enter at <= top_n, exit below this (L1: null = top_n)
   weighting: "equal"             # equal | inverse_vol | conviction_tier | softmax (L1: conviction_tier)
@@ -63,11 +62,6 @@ event_mask:
   block_new_entries_only: true   # true = don't add; existing positions untouched
 
 sizing:
-  house_money:
-    enabled: false               # not implemented (Layer 2 item); off so the report does not announce it
-    trigger_gain_pct: 0.50       # at +50% unrealized
-    action: "recover_principal"  # trim to return original cost basis
-    trailing_stop_pct: 0.25      # on the remainder
   max_position_weight: 0.35
   cash_floor: 0.0
 
@@ -92,15 +86,3 @@ risk:
   rf_series: "DTB3"
   var_confidence: [0.95, 0.99]
   rolling_beta_window: 60
-  monte_carlo_runs: 10000
-
-ml:
-  enabled: false                 # Layer 2 flag
-  horizon_days: 21
-  label: "outperform_basket_median"
-  models: ["logistic", "random_forest", "lightgbm"]
-  cv:
-    n_splits: 5
-    purge_days: 21
-    embargo_days: 5
-  feature_lag_days: 1

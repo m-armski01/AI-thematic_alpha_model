@@ -17,7 +17,7 @@
 | Ranker | momentum_zscore, top 5 (exit rank 8), equal |
 | Macro gate | block increases while any sub-gate is engaged (VIX>25 (release 20); 10y +40bp (release 32bp)/21d; WTI +20% (release 16%)/21d); exempt segments: defensive; scale factors and floor unused; evaluated monthly |
 | Event mask | block new exposure 3 sessions before earnings (on) |
-| Sizing | max weight 0.35, cash floor 0; house-money rule: enabled in config but not implemented (Layer 2 item), not applied |
+| Sizing | max weight 0.35, cash floor 0 |
 | Liquidity screen | 21-day average traded value ≥ 5,000,000 EUR |
 | Turnover control | position no-trade band 2 pp (on; strategy only) |
 | Min history | 252 sessions |

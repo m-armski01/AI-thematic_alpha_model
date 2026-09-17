@@ -117,7 +117,7 @@ class MacroGateConfig(_Base):
 
 
 class RankerConfig(_Base):
-    method: Literal["momentum_zscore", "equal_weight", "ml"] = "momentum_zscore"
+    method: Literal["momentum_zscore", "equal_weight"] = "momentum_zscore"
     top_n: int = Field(gt=0)
     weighting: Literal["equal", "inverse_vol", "conviction_tier", "softmax"] = "conviction_tier"
     conviction_tiers: list[float]
@@ -151,15 +151,7 @@ class EventMaskConfig(_Base):
     block_new_entries_only: bool = True
 
 
-class HouseMoneyConfig(_Base):
-    enabled: bool = True
-    trigger_gain_pct: float = Field(gt=0.0)
-    action: Literal["recover_principal"] = "recover_principal"
-    trailing_stop_pct: float = Field(gt=0.0, lt=1.0)
-
-
 class SizingConfig(_Base):
-    house_money: HouseMoneyConfig
     max_position_weight: float = Field(gt=0.0, le=1.0)
     cash_floor: float = Field(ge=0.0, le=1.0)
 
@@ -194,7 +186,6 @@ class RiskConfig(_Base):
     rf_series: str = "DTB3"
     var_confidence: list[float]
     rolling_beta_window: int = Field(gt=0)
-    monte_carlo_runs: int = Field(gt=0)
 
     @field_validator("var_confidence")
     @classmethod
@@ -203,21 +194,6 @@ class RiskConfig(_Base):
             if not 0.0 < c < 1.0:
                 raise ValueError(f"var_confidence entries must be in (0, 1); got {c}")
         return v
-
-
-class CVConfig(_Base):
-    n_splits: int = Field(gt=1)
-    purge_days: int = Field(ge=0)
-    embargo_days: int = Field(ge=0)
-
-
-class MLConfig(_Base):
-    enabled: bool = False
-    horizon_days: int = Field(gt=0)
-    label: str = "outperform_basket_median"
-    models: list[str]
-    cv: CVConfig
-    feature_lag_days: int = Field(ge=0)
 
 
 class Config(_Base):
@@ -235,7 +211,6 @@ class Config(_Base):
     backtest: BacktestConfig
     costs: CostsConfig
     risk: RiskConfig
-    ml: MLConfig
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Config:

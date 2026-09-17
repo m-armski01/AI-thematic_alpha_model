@@ -85,8 +85,6 @@ def weight_selected(
 
 def rank(wide: dict[str, pd.DataFrame], eligible: pd.DataFrame, cfg: RankerConfig) -> pd.DataFrame:
     """date x ticker weights summing to 1 on each date with at least one eligible name."""
-    if cfg.method == "ml":
-        raise NotImplementedError("ranker.method='ml' arrives in Layer 2")
     if cfg.method == "equal_weight":
         return weight_selected(eligible.astype(float).where(eligible), "equal", [])
     score = zscore_rows(wide[SIGNAL], eligible)

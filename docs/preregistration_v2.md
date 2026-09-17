@@ -34,7 +34,6 @@ configs share every chosen value, the window and the costs.
 | `universe.selection` | `hindsight` | `point_in_time` (ETF config only) | Report framing, not a strategy parameter: `hindsight` prints the Layer 1 hindsight paragraph; `point_in_time` states how the universe was defined and the residual ETF-delisting bias. |
 | `event_mask.enabled` | `true` | `false` (ETF config only) | ETFs report no earnings; the mask has nothing to mask. The control keeps it on. |
 | `backtest.cash_earns_rf` | `false` | `true` (all configs) | Measurement, not a rule: idle cash earns the 3-month T-bill rate (`DTB3`, calendar-day basis) for the strategy and every benchmark alike. The overlay deliberately moves to cash when the gate blocks; charging that cash 0% would understate it against the real alternative (T-bills) and overstate it against a fully invested buy-and-hold in a zero-rate world. Off in the neutral default so the golden fixture is unchanged. |
-| `sizing.house_money.enabled` | `true` | `false` (ETF config only) | The rule is not implemented (Layer 2 item); turning the flag off in the new config stops the report from announcing a rule it does not apply. |
 
 ## Dropped from the brief, and why
 
@@ -80,6 +79,8 @@ from the sensitivity or ablation rows into the chosen config after the run.
   Reason: the selection-bias comparison requires the same year definition on both universes.
 
 - 2026-09-17 — **Idle cash earns the T-bill rate.** Layer 1 and brief v2 credited uninvested cash with 0%. `backtest.cash_earns_rf: true` (all four configs, every study row) compounds the cash balance at `DTB3` × calendar days since the previous session / 365 at the start of each session, for the strategy and every benchmark run through the same engine. The rate is the one-session-lagged macro series already used for Sharpe, so there is no lookahead; sessions without a published rate accrue nothing. Calendar-day accrual keeps the credit independent of the master calendar (a 1/252-per-session rule would credit the NYSE ∪ KRX basket ~3% more than the NYSE-only ETF control). The neutral default is `false` and byte-identical to Layer 1 (golden test). Effect on the basket run is recorded in the commit that regenerates `outputs/`. Reason: IMPROVEMENTS.md §2.1 — the trade-vs-hold verdict compares an overlay that holds cash against a fully invested basket, so the cash must earn its true alternative.
+
+- 2026-09-17 — **Dead scaffolding removed.** `sizing.house_money` (a flag whose only effect was a log line saying the rule is not implemented), the `ml` config block and `ranker.method: ml` (a `NotImplementedError` branch) and `risk.monte_carlo_runs` (never read) are deleted from the schema and the configs. The former parameter-table row for `sizing.house_money.enabled` is gone with it. No run, target, trade or metric changes (golden test). Reason: IMPROVEMENTS.md §3.
 
 ## Deviations
 

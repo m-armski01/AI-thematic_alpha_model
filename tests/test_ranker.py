@@ -80,12 +80,6 @@ def test_no_eligible_names_means_cash():
     assert (w == 0).all().all()
 
 
-def test_ml_method_not_implemented():
-    cfg = make_config().ranker.model_copy(update={"method": "ml"})
-    with pytest.raises(NotImplementedError):
-        ranker.rank(_wide([[1] * 6] * 2), ALL, cfg)
-
-
 def test_naive_momentum_is_equal_weight_top_n():
     wide = _wide([[6, 5, 4, 3, 2, 1]] * 2)
     w = ranker.naive_momentum(wide, ALL, top_n=3)

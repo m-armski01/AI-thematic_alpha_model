@@ -200,12 +200,7 @@ def render_report(
         [
             "Sizing",
             f"max weight {config.sizing.max_position_weight:g}, cash floor "
-            f"{config.sizing.cash_floor:g}; house-money rule: "
-            + (
-                "enabled in config but not implemented (Layer 2 item), not applied"
-                if config.sizing.house_money.enabled
-                else "off"
-            ),
+            f"{config.sizing.cash_floor:g}",
         ],
         [
             "Liquidity screen",

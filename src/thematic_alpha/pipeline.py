@@ -50,7 +50,6 @@ from thematic_alpha.strategy.compose import ComposeResult, compose_target_weight
 from thematic_alpha.strategy.event_mask import EventMask, build_event_mask, load_earnings_dates
 from thematic_alpha.strategy.macro_gate import GateState, applied_gate, gate_factors
 from thematic_alpha.strategy.ranker import rank_on_signal_dates
-from thematic_alpha.strategy.sizing import announce_house_money
 
 logger = logging.getLogger("thematic_alpha.pipeline")
 
@@ -251,7 +250,6 @@ def build_strategy(
         )
     else:
         mask = None
-    announce_house_money(config.sizing)
     composed = compose_target_weights(
         ranker_weights,
         applied.exposure,
