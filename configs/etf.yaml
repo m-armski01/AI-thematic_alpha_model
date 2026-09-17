@@ -20,7 +20,7 @@ data:
 universe:
   file: "data/reference/universe_etf.csv"
   benchmarks: ["SPY"]         # [0] is the market: beta, features, S&P B&H
-  selection: "point_in_time"  # hindsight | point_in_time (report framing)
+  selection: "point_in_time"  # owned_portfolio | point_in_time (report framing only)
 
 features:
   momentum_windows: [21, 63, 126, 252]
@@ -86,3 +86,14 @@ risk:
   rf_series: "DTB3"
   var_confidence: [0.95, 0.99]
   rolling_beta_window: 60
+
+report:                          # identity and framing only; tone and verdicts are generated in code
+  title: "Does the overlay generalise? Point-in-time ETF control"
+  subtitle: "Out-of-basket robustness check: the same rules on 17 sector, factor and defensive ETFs, 2015-2026"
+  author: ""                     # left blank on purpose; fill in before publishing
+  thesis: >-
+    The overlay's value, if any, should not depend on the author's particular names. Running the
+    identical rules on a category-defined, point-in-time ETF universe tests whether the macro gate
+    and the momentum ranker add anything to buy-and-hold when the basket carries no hindsight; if
+    the overlay helps only on the basket, the basket and not the rules is the source.
+  disclaimer: "Research system, not a trading system. Nothing here is investment advice. All figures are net of transaction costs."

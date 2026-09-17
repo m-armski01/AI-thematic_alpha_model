@@ -17,6 +17,8 @@ from thematic_alpha.config import RiskConfig
 from thematic_alpha.risk.drawdown import max_drawdown
 
 PERIODS = 252
+# Reports do not annualise (CAGR, Calmar, alpha) over windows shorter than this: ~24 months.
+MIN_ANNUALISE_SESSIONS = 2 * PERIODS
 
 
 def annualize_rf(rf_annual_pct: pd.Series) -> pd.Series:
@@ -68,14 +70,30 @@ def cvar(returns: pd.Series, confidence: float) -> float:
     return float(-tail.mean()) if len(tail) else float("nan")
 
 
-def ols_alpha_beta(excess: pd.Series, market_excess: pd.Series) -> tuple[float, float]:
-    """Full-sample OLS of daily excess returns on market excess returns; alpha annualized."""
+def ols_alpha_beta(excess: pd.Series, market_excess: pd.Series) -> tuple[float, float, float]:
+    """Full-sample OLS of daily excess returns on market excess returns.
+
+    Returns (alpha annualized, beta, t-statistic of the daily alpha under homoskedastic OLS
+    standard errors). Daily returns of a weekly-rebalanced book are close to serially
+    uncorrelated, so the plain standard error is a fair first-order measure of significance.
+    """
     df = pd.concat([excess, market_excess], axis=1, keys=["y", "x"]).dropna()
     if len(df) < 3:
-        return float("nan"), float("nan")
+        return float("nan"), float("nan"), float("nan")
+    y = df["y"].to_numpy()
     x = np.column_stack([np.ones(len(df)), df["x"].to_numpy()])
-    coef, *_ = np.linalg.lstsq(x, df["y"].to_numpy(), rcond=None)
-    return float(coef[0] * PERIODS), float(coef[1])
+    coef, *_ = np.linalg.lstsq(x, y, rcond=None)
+    resid = y - x @ coef
+    sigma2 = float(resid @ resid) / (len(df) - 2)
+    # pinv: a constant market series (zero variance) must not raise, it just has no beta.
+    se_alpha = float(np.sqrt(max(sigma2 * np.linalg.pinv(x.T @ x)[0, 0], 0.0)))
+    tstat = float(coef[0] / se_alpha) if se_alpha > 0 else float("nan")
+    return float(coef[0] * PERIODS), float(coef[1]), tstat
+
+
+def annualisable(metrics: dict) -> bool:
+    """Whether a metrics dict covers enough sessions for annualised figures to be reported."""
+    return int(metrics.get("n_days", 0)) >= MIN_ANNUALISE_SESSIONS
 
 
 def rolling_beta(returns: pd.Series, market: pd.Series, window: int) -> pd.Series:
@@ -121,7 +139,7 @@ def compute_metrics(
     dates = period_dates if period_dates is not None else result.execution_dates
     per = period_returns(equity, dates)
     wins, losses = per[per > 0], per[per < 0]
-    alpha, beta = ols_alpha_beta(excess, mkt_excess)
+    alpha, beta, alpha_t = ols_alpha_beta(excess, mkt_excess)
 
     out: dict = {
         "total_return": float(equity.iloc[-1] / result.initial_capital - 1.0),
@@ -140,6 +158,7 @@ def compute_metrics(
             else float("nan")
         ),
         "alpha_ann": alpha,
+        "alpha_tstat": alpha_t,
         "beta": beta,
         "hit_rate": float((per > 0).mean()) if len(per) else float("nan"),
         "avg_win": float(wins.mean()) if len(wins) else float("nan"),
@@ -150,6 +169,7 @@ def compute_metrics(
         "costs_pct_final_equity": float(result.total_costs / result.final_equity),
         "excess_kurtosis": float(r.kurt()),
         "n_days": int(len(r)),
+        "window_months": int(round(len(r) / (PERIODS / 12))),
     }
     for c in cfg.var_confidence:
         tag = f"{int(round(c * 100))}"

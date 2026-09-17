@@ -46,9 +46,11 @@ class DataConfig(_Base):
 class UniverseConfig(_Base):
     file: str
     benchmarks: list[str]
-    # Report framing only: "hindsight" prints the hindsight-bias paragraph; "point_in_time"
-    # states how the universe was defined and the residual ETF-delisting bias.
-    selection: Literal["hindsight", "point_in_time"] = "hindsight"
+    # Report framing only. "owned_portfolio": the names are the author's holdings, a given, and
+    # the report is a trade-vs-hold study against equal-weight buy-and-hold of the same basket.
+    # "point_in_time": a category list with dated eligibility, reported as the generalisation
+    # control (and its residual ETF-delisting bias).
+    selection: Literal["owned_portfolio", "point_in_time"] = "owned_portfolio"
 
 
 class FeaturesConfig(_Base):
@@ -196,6 +198,21 @@ class RiskConfig(_Base):
         return v
 
 
+class ReportConfig(_Base):
+    """Identity and framing of the generated report (documentation-as-config). The tone and
+    every verdict sentence are generated in code; these fields only fix what the run is called
+    and what it claims to test."""
+
+    title: str = "thematic-alpha report"
+    subtitle: str = ""
+    author: str = ""
+    thesis: str = ""  # the hypothesis under test, 2-4 sentences; omitted from the report if empty
+    disclaimer: str = (
+        "Research system, not a trading system. Nothing here is investment advice. "
+        "All figures are net of transaction costs."
+    )
+
+
 class Config(_Base):
     """Top-level config mirroring the full YAML schema."""
 
@@ -211,6 +228,7 @@ class Config(_Base):
     backtest: BacktestConfig
     costs: CostsConfig
     risk: RiskConfig
+    report: ReportConfig = ReportConfig()
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Config:

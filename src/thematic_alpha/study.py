@@ -4,7 +4,8 @@
 
 Data and features are loaded once per universe; benchmarks are run once per universe; then
 only strategy + backtest + risk + attribution are rerun per variant. Variants are declared as
-overrides on the chosen config (see ``VARIANTS``), never chosen after seeing results; the
+overrides on the chosen config (``L1``, ``KNOBS``, ``variants()``), never chosen after seeing
+results; the
 sensitivity rows are reported next to each other and nothing is promoted. Writes
 ``outputs/study.md`` and ``outputs/study/`` (tables as CSV, figures).
 """
@@ -284,7 +285,7 @@ def _cmp(a: float, b: float, higher: str = "higher", lower: str = "lower") -> st
 def headline_verdict(s: dict, ew: dict, spy: dict, nm: dict) -> str:
     beats_ew = s["sharpe"] > ew["sharpe"] or s["cagr"] > ew["cagr"]
     return (
-        f"On the point-in-time ETF universe the strategy's CAGR is {_cmp(s['cagr'], ew['cagr'])} "
+        f"On the point-in-time ETF control the overlay's CAGR is {_cmp(s['cagr'], ew['cagr'])} "
         f"than equal-weight buy-and-hold of the same 17 ETFs ({fmt_pct(s['cagr'])} vs "
         f"{fmt_pct(ew['cagr'])}), its Sharpe is {_cmp(s['sharpe'], ew['sharpe'])} "
         f"({fmt_num(s['sharpe'])} vs {fmt_num(ew['sharpe'])}) and its maximum drawdown is "
@@ -295,9 +296,9 @@ def headline_verdict(s: dict, ew: dict, spy: dict, nm: dict) -> str:
         f"top-5 momentum it is {_cmp(s['sharpe'], nm['sharpe'])} on Sharpe "
         f"({fmt_num(nm['sharpe'])}). "
         + (
-            "The rules add something on this universe."
+            "The overlay adds something on this universe."
             if beats_ew
-            else "**The rules do not beat holding the basket on this universe**, net of costs."
+            else "**The overlay does not beat holding the ETF basket**, net of costs."
         )
     )
 
@@ -307,17 +308,17 @@ def selection_verdict(stock: dict, etf: dict, stock_ew: dict, etf_ew: dict) -> s
     d_sharpe = stock["sharpe"] - etf["sharpe"]
     d_ew = stock_ew["cagr"] - etf_ew["cagr"]
     return (
-        f"Same rules, same window, same costs: **{fmt_pct(stock['cagr'])} CAGR with the "
-        f"hindsight universe, {fmt_pct(etf['cagr'])} without** — a difference of "
+        f"Same rules, same window, same costs: **{fmt_pct(stock['cagr'])} CAGR on the owned "
+        f"basket, {fmt_pct(etf['cagr'])} on the ETF control** — a difference of "
         f"{fmt_pct(d_cagr)} per year and {fmt_num(d_sharpe)} of Sharpe "
         f"({fmt_num(stock['sharpe'])} vs {fmt_num(etf['sharpe'])}). The equal-weight "
         f"buy-and-hold shows the same gap without any rules: {fmt_pct(stock_ew['cagr'])} for the "
         f"12 stocks vs {fmt_pct(etf_ew['cagr'])} for the 17 ETFs ({fmt_pct(d_ew)} per year, "
         f"Sharpe {fmt_num(stock_ew['sharpe'])} vs {fmt_num(etf_ew['sharpe'])}). "
         + (
-            "The universe, not the rules, is where the Layer 1 return came from."
+            "The basket, not the rules, is where the return came from."
             if abs(d_ew) > abs(d_cagr - d_ew)
-            else "The rules interact with the universe: the gap between the two strategy runs is "
+            else "The rules interact with the universe: the gap between the two overlay runs is "
             "larger than the gap between the two buy-and-holds."
         )
     )
@@ -377,7 +378,7 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
     cfg = studies[0].config
     lines: list[str] = []
     lines += [
-        "# thematic-alpha study — brief v2: point-in-time ETF universe vs the hindsight control",
+        "# thematic-alpha study — does the overlay generalise? ETF control and ablation",
         "",
     ]
     lines += [
@@ -398,7 +399,8 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
     # 1. ETF headline
     if etf is not None:
         lines += [
-            "## 1. ETF headline: strategy vs equal-weight B&H (ETF) vs SPY vs naive momentum",
+            "## 1. ETF control: overlay vs equal-weight buy-and-hold (ETF) vs SPY vs naive "
+            "momentum",
             "",
         ]
         chosen = etf.rows.loc[etf.chosen_key]
@@ -439,7 +441,7 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
         ]
         lines += [
             markdown_table(
-                ["", "Strategy (chosen)", *[LABELS[n] for n in pipeline.BENCHMARK_ORDER]], rows
+                ["", "Overlay (chosen)", *[LABELS[n] for n in pipeline.BENCHMARK_ORDER]], rows
             ),
             "",
         ]
@@ -451,7 +453,11 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
 
     # 2. Selection bias
     if etf is not None and stock is not None:
-        lines += ["## 2. Selection bias: identical chosen rules, 12 stocks vs 17 ETFs", ""]
+        lines += [
+            "## 2. Selection bias: identical chosen rules, the owned 12-stock basket vs the "
+            "17-ETF control",
+            "",
+        ]
         sc, ec = stock.rows.loc[stock.chosen_key], etf.rows.loc[etf.chosen_key]
         sew, eew = (
             stock.benchmark_metrics["equal_weight_bh"],
@@ -459,37 +465,37 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
         )
         rows = [
             [
-                "Strategy (chosen rules) CAGR",
+                "Overlay (chosen rules) CAGR",
                 fmt_pct(sc["cagr"]),
                 fmt_pct(ec["cagr"]),
                 fmt_pct(sc["cagr"] - ec["cagr"]),
             ],
             [
-                "Strategy Sharpe",
+                "Overlay Sharpe",
                 fmt_num(sc["sharpe"]),
                 fmt_num(ec["sharpe"]),
                 fmt_num(sc["sharpe"] - ec["sharpe"]),
             ],
             [
-                "Strategy max drawdown",
+                "Overlay max drawdown",
                 fmt_pct(sc["max_drawdown"]),
                 fmt_pct(ec["max_drawdown"]),
                 fmt_pct(sc["max_drawdown"] - ec["max_drawdown"]),
             ],
             [
-                "Equal-weight B&H CAGR",
+                "Equal-weight buy-and-hold CAGR",
                 fmt_pct(sew["cagr"]),
                 fmt_pct(eew["cagr"]),
                 fmt_pct(sew["cagr"] - eew["cagr"]),
             ],
             [
-                "Equal-weight B&H Sharpe",
+                "Equal-weight buy-and-hold Sharpe",
                 fmt_num(sew["sharpe"]),
                 fmt_num(eew["sharpe"]),
                 fmt_num(sew["sharpe"] - eew["sharpe"]),
             ],
             [
-                "SPY B&H CAGR (same in both)",
+                "SPY buy-and-hold CAGR (same in both)",
                 fmt_pct(stock.benchmark_metrics["sp500"]["cagr"]),
                 fmt_pct(etf.benchmark_metrics["sp500"]["cagr"]),
                 "",
@@ -497,7 +503,8 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
         ]
         lines += [
             markdown_table(
-                ["", "12 stocks (hindsight)", "17 ETFs (point-in-time)", "difference"], rows
+                ["", "12 stocks (owned basket)", "17 ETFs (point-in-time control)", "difference"],
+                rows,
             ),
             "",
         ]
@@ -552,7 +559,8 @@ def render_study(studies: list[UniverseStudy], out_dir: Path, figures: dict[str,
     # 4. Ablation
     lines += ["## 4. Ablation", ""]
     lines += [
-        "Rows are declared in `study.py` (`VARIANTS`): the L1 baseline, the cumulative chain in "
+        "Rows are declared in `study.py` (`L1`, `KNOBS`, `variants()`): the L1 baseline, the "
+        "cumulative chain in "
         "the brief's order, each knob alone on the baseline, the softmax sensitivity set on the "
         "chosen config, and two references (gate disabled; liquidity screen off). The "
         "liquidity screen is part of the universe definition and stays on in every other row; "

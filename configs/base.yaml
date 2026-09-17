@@ -16,7 +16,7 @@ data:
 universe:
   file: "data/reference/universe.csv"
   benchmarks: ["SPY", "QQQ", "SOXX"]   # [0] is the market: beta, features, S&P B&H
-  selection: "hindsight"        # hindsight | point_in_time (report framing)
+  selection: "owned_portfolio"  # owned_portfolio | point_in_time (report framing only)
 
 features:
   momentum_windows: [21, 63, 126, 252]
@@ -82,3 +82,16 @@ risk:
   rf_series: "DTB3"
   var_confidence: [0.95, 0.99]
   rolling_beta_window: 60
+
+report:                          # identity and framing only; tone and verdicts are generated in code
+  title: "Does an active macro overlay beat holding the basket?"
+  subtitle: "A personal research study on the author's 12-stock AI / datacenter basket, 2015-2026"
+  author: ""                     # left blank on purpose; fill in before publishing
+  thesis: >-
+    A high-beta AI / datacenter basket is most exposed to macro stress: equity-volatility spikes
+    (VIX), sharp rises in the 10-year yield and oil shocks compress the multiples of long-duration
+    growth names first. The overlay ranks the basket on 3-month momentum, holds the top five, and
+    stops adding risk while any of the three macro triggers is engaged. The prediction under test
+    is that the overlay preserves most of the basket's upside while cutting its drawdowns in
+    stress regimes; if it does not, buy-and-hold is the better policy.
+  disclaimer: "Research system, not a trading system. Nothing here is investment advice. All figures are net of transaction costs."

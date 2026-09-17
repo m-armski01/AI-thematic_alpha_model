@@ -121,7 +121,7 @@ def underwater(uw: pd.Series, path: Path) -> Path:
     )
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
     _style(ax, "Drawdown from running peak")
-    _title(ax, "Strategy underwater plot")
+    _title(ax, "Overlay underwater plot")
     return _save(fig, path)
 
 
@@ -164,7 +164,7 @@ def weights_area(
     ax.set_ylim(0, 1)
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
     _style(ax, "Share of equity (remainder is cash)")
-    _title(ax, "Strategy allocation, month-end snapshots" if sample else "Strategy allocation")
+    _title(ax, "Overlay allocation, month-end snapshots" if sample else "Overlay allocation")
     leg = ax.legend(
         frameon=False,
         fontsize=8,

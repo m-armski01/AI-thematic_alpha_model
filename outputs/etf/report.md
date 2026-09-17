@@ -1,8 +1,48 @@
-# thematic-alpha report — run `etf`
+# Does the overlay generalise? Point-in-time ETF control — run `etf`
 
-**Universe definition (point-in-time).** The universe is a fixed list of 17 exchange-traded funds chosen by category (2 defensive, 11 sector, 4 thematic), not by past performance, from `data/reference/universe_etf.csv`. A name enters the cross-section only once it has 252 observed sessions and a 21-day average traded value of at least 5,000,000 EUR, so the investable set on every signal date is defined from data available on that date (composition table and figure below). Residual bias: the list holds only funds that still trade at the snapshot date; funds in these categories that were liquidated or merged away are absent, which flatters the equal-weight buy-and-hold of the basket (ETF-delisting bias). It is much smaller than hindsight stock selection, but it is not zero.
+*Out-of-basket robustness check: the same rules on 17 sector, factor and defensive ETFs, 2015-2026*
+
+**Thesis.** The overlay's value, if any, should not depend on the author's particular names. Running the identical rules on a category-defined, point-in-time ETF universe tests whether the macro gate and the momentum ranker add anything to buy-and-hold when the basket carries no hindsight; if the overlay helps only on the basket, the basket and not the rules is the source.
+
+**Control universe (point-in-time).** This run is the generalisation check for the overlay, not the headline: a fixed list of 17 exchange-traded funds chosen by category (2 defensive, 11 sector, 4 thematic), not by past performance, from `data/reference/universe_etf.csv`. A name enters the cross-section only once it has 252 observed sessions and a 21-day average traded value of at least 5,000,000 EUR, so the investable set on every signal date is defined from data available on that date (composition table and figure below). If the overlay adds value on the author's basket but not here, the basket rather than the rules is the source. Residual bias: the list holds only funds that still trade at the snapshot date; funds in these categories that were liquidated or merged away are absent, which flatters buy-and-hold of the control basket (ETF-delisting bias). It is much smaller than hindsight stock selection, but it is not zero.
 
 > Research system, not a trading system. Nothing here is investment advice. All figures are net of transaction costs.
+
+## Verdict
+
+Over 2015-01-01 → 2026-09-11 (140 months) the overlay's CAGR is lower than equal-weight buy-and-hold of the same basket (5.9% vs 13.5%), its Sharpe is lower (0.31 vs 0.71), and its maximum drawdown is deeper (-30.5% vs -29.9%). Realised beta to the S&P 500 is 0.70 for the overlay and 0.89 for buy-and-hold. **The overlay does not add value over holding the basket**, net of costs.
+
+## Headline results (net of costs): overlay vs buy-and-hold of the basket
+
+![equity curves](figures/equity_curves.png)
+
+| Metric | Overlay | Equal-weight buy-and-hold (basket) |
+|---|---:|---:|
+| Total return | 95.3% | 339.6% |
+| CAGR | 5.9% | 13.5% |
+| Annualized volatility | 16.1% | 16.9% |
+| Sharpe (excess over DTB3) | 0.31 | 0.71 |
+| Sortino (MAR 0) | 0.42 | 1.00 |
+| Max drawdown | -30.5% | -29.9% |
+| Max DD peak | 2020-02-19 | 2020-02-19 |
+| Max DD trough | 2020-03-16 | 2020-03-23 |
+| Max DD recovery | 2024-01-19 | 2021-01-08 |
+| Max DD duration (days) | 1,430 | 324 |
+| Calmar | 0.19 | 0.45 |
+| Historical VaR 95% (daily) | 1.6% | 1.6% |
+| Historical VaR 99% (daily) | 3.0% | 2.9% |
+| Parametric VaR 95% (daily) | 1.6% | 1.7% |
+| Parametric VaR 99% (daily) | 2.3% | 2.4% |
+| CVaR / ES 95% (daily) | 2.5% | 2.6% |
+| Excess kurtosis (daily) | 9.01 | 9.36 |
+| Hit rate (weekly periods) | 59.4% | 59.3% |
+| Average win (weekly period) | 1.3% | 1.6% |
+| Average loss (weekly period) | -1.6% | -1.6% |
+| Annualized turnover | 9.75 | 0.23 |
+| Total costs paid | 1,149.91 | 23.80 |
+| Costs as % of final equity | 5.89% | 0.05% |
+
+VaR note: parametric (normal) 99% VaR of the overlay is 2.3% against a historical 3.0%; daily excess kurtosis is 9.01. The normal assumption understates the tail.
 
 ## Configuration
 
@@ -14,12 +54,13 @@
 | Rebalance | weekly, friday |
 | Execution | t + 1 session at the open |
 | Costs | model=bps, 5 bps/side + 3 bps slippage, flat 1 EUR |
+| Idle cash | earns DTB3 (calendar-day accrual), all runs |
 | Ranker | momentum_zscore, top 5 (exit rank 8), equal |
 | Macro gate | block increases while any sub-gate is engaged (VIX>25 (release 20); 10y +40bp (release 32bp)/21d; WTI +20% (release 16%)/21d); exempt segments: defensive; scale factors and floor unused; evaluated monthly |
 | Event mask | disabled |
 | Sizing | max weight 0.35, cash floor 0 |
 | Liquidity screen | 21-day average traded value ≥ 5,000,000 EUR |
-| Turnover control | position no-trade band 2 pp (on; strategy only) |
+| Turnover control | position no-trade band 2 pp (on; overlay only) |
 | Min history | 252 sessions |
 | Macro publication lag | 1 session |
 
@@ -53,17 +94,63 @@ When each name enters the cross-section (backtest starts 2015-01-02; a date befo
 
 ![universe composition](figures/universe_composition.png)
 
-## Strategy activity
+## Overlay activity
 
-611 signal dates. Macro gate in **block-increases** mode: risk-off on 172 signal dates, 416 increases or entries blocked (that weight stayed in cash; exempt names: TLT, GLD). The scale factors and `min_exposure` are unused in this mode. The gate was evaluated on 142 of the 611 signal dates (monthly) and held constant in between; ranking stayed weekly. Event mask: **disabled** (ETFs report no earnings; nothing to mask).
+611 signal dates. Macro gate in **block-increases** mode: risk-off on 172 signal dates, 416 increases or entries blocked (that weight stays in cash; exempt names: TLT, GLD). The scale factors and `min_exposure` are unused in this mode. The gate is evaluated on 142 of the 611 signal dates (monthly) and held constant in between; ranking stays weekly. Event mask: **disabled** (ETFs report no earnings; nothing to mask).
 
 Average cross-sectional rank of the held names: **3.55** (exit rank 8, top 5; plain top-5 gives 3.0 by construction). A higher value is the signal-quality cost of the rank buffer: it holds names the ranker would otherwise have replaced.
 
-## Headline results (net of costs)
+## Turnover attribution
 
-![equity curves](figures/equity_curves.png)
+Annualized turnover split by cause (see `backtest/attribution.py`): **membership** (entries and exits), **drift** (re-trading a held name back to an unchanged target, including the residual of earlier skipped or cash-scaled trades), **gate** (the macro gate changing the book) and **reweight** (ranker, mask and cap effects on a held name). Causes sum to the annualized turnover in the headline table.
 
-| Metric | Strategy | S&P 500 (SPY) B&H | Equal-weight B&H (universe) | Naive momentum (top-N) |
+| Run | membership | drift | gate | reweight | total |
+|---|---:|---:|---:|---:|---:|
+| Overlay | 9.66 | 0.09 | 0.00 | 0.00 | 9.75 |
+| S&P 500 (SPY) buy-and-hold | 0.09 | 0.00 | 0.00 | 0.00 | 0.09 |
+| Equal-weight buy-and-hold (basket) | 0.15 | 0.03 | 0.00 | 0.05 | 0.23 |
+| Naive momentum (top-N) | 22.40 | 0.58 | 0.00 | 0.00 | 22.98 |
+
+Macro gate: 34 state transitions over 611 signal dates (2.9 per year); 0 of them reverse within 1 signal date and 0 within 2. The gate accounts for 0.0% of the overlay's turnover. In block mode a blocked *entry* that executes after the release is membership turnover, not gate turnover, so this share only counts blocked increases of held names; with equal weights and a full book those are rare, and the gate's effect shows up as deferred membership and higher cash instead.
+
+![turnover by cause](figures/turnover_by_cause.png)
+
+## FX decomposition (overlay)
+
+|  | In EUR | In local currencies |
+|---|---:|---:|
+| Total return | 95.3% | 99.2% |
+| CAGR | 5.9% | 6.1% |
+
+FX contribution: -0.2% per year of CAGR; in total the EUR result differs from the local-currency result by -3.9% of initial capital. Positions are unhedged USD exposure held by a EUR investor.
+
+## Largest drawdowns
+
+**Overlay**
+
+| Depth | Peak | Trough | Recovery | Duration (days) |
+|---|---:|---:|---:|---:|
+| -30.5% | 2020-02-19 | 2020-03-16 | 2024-01-19 | 1,430 |
+| -25.2% | 2015-03-19 | 2016-02-11 | 2017-11-08 | 965 |
+| -19.0% | 2025-02-10 | 2025-04-08 | 2025-11-26 | 289 |
+| -16.3% | 2018-10-03 | 2018-12-24 | 2019-08-15 | 316 |
+| -11.6% | 2024-07-10 | 2024-08-05 | 2025-02-03 | 208 |
+
+**Equal-weight buy-and-hold (basket)**
+
+| Depth | Peak | Trough | Recovery | Duration (days) |
+|---|---:|---:|---:|---:|
+| -29.9% | 2020-02-19 | 2020-03-23 | 2021-01-08 | 324 |
+| -21.4% | 2025-02-19 | 2025-04-21 | 2025-10-01 | 224 |
+| -18.0% | 2015-04-15 | 2016-02-11 | 2016-07-15 | 457 |
+| -16.2% | 2018-10-03 | 2018-12-24 | 2019-02-15 | 135 |
+| -15.0% | 2022-01-03 | 2022-06-16 | 2022-08-12 | 221 |
+
+## Appendix: market context
+
+The S&P 500 (SPY) and a naive top-N momentum rule (no gate, no mask, no rank buffer, same costs) are shown for context only; neither is the benchmark this study is about.
+
+| Metric | Overlay | S&P 500 (SPY) buy-and-hold | Equal-weight buy-and-hold (basket) | Naive momentum (top-N) |
 |---|---:|---:|---:|---:|
 | Total return | 95.3% | 364.5% | 339.6% | 204.7% |
 | CAGR | 5.9% | 14.1% | 13.5% | 10.0% |
@@ -91,63 +178,23 @@ Average cross-sectional rank of the held names: **3.55** (exit rank 8, top 5; pl
 | Total costs paid | 1,149.91 | 7.99 | 23.80 | 3,403.97 |
 | Costs as % of final equity | 5.89% | 0.02% | 0.05% | 11.17% |
 
-Against equal-weight buy-and-hold of the same basket the strategy's CAGR is lower (5.9% vs 13.5%), its Sharpe is lower (0.31 vs 0.71), and its maximum drawdown is deeper (-30.5% vs -29.9%). **This is an underperformance result**: the rules did not add value over simply holding the (hindsight-selected) basket, net of costs.
+Against the S&P 500 the overlay's annualised alpha is -4.1% at a beta of 0.70 (t = -1.50). The alpha estimate is not distinguishable from zero at conventional levels.
 
-VaR note: parametric (normal) 99% VaR is 2.3% against a historical 3.0%; daily excess kurtosis is 9.01. The normal assumption understates the tail.
+## Limitations and next steps
 
-## Turnover attribution
-
-Annualized turnover split by cause (see `backtest/attribution.py`): **membership** (entries and exits), **drift** (re-trading a held name back to an unchanged target, including the residual of earlier skipped or cash-scaled trades), **gate** (the macro gate changing the book) and **reweight** (ranker, mask and cap effects on a held name). Causes sum to the annualized turnover in the table above.
-
-| Run | membership | drift | gate | reweight | total |
-|---|---:|---:|---:|---:|---:|
-| Strategy | 9.66 | 0.09 | 0.00 | 0.00 | 9.75 |
-| S&P 500 (SPY) B&H | 0.09 | 0.00 | 0.00 | 0.00 | 0.09 |
-| Equal-weight B&H (universe) | 0.15 | 0.03 | 0.00 | 0.05 | 0.23 |
-| Naive momentum (top-N) | 22.40 | 0.58 | 0.00 | 0.00 | 22.98 |
-
-Macro gate: 34 state transitions over 611 signal dates (2.9 per year); 0 of them reverse within 1 signal date and 0 within 2. The gate accounts for 0.0% of the strategy's turnover. In block mode a blocked *entry* that executes after the release is membership turnover, not gate turnover, so this share only counts blocked increases of held names; with equal weights and a full book those are rare, and the gate's effect shows up as deferred membership and higher cash instead.
-
-![turnover by cause](figures/turnover_by_cause.png)
-
-## FX decomposition (strategy)
-
-|  | In EUR | In local currencies |
-|---|---:|---:|
-| Total return | 95.3% | 99.2% |
-| CAGR | 5.9% | 6.1% |
-
-FX contribution: -0.2% per year of CAGR; in total the EUR result differs from the local-currency result by -3.9% of initial capital. Positions are unhedged USD exposure held by a EUR investor.
-
-## Largest drawdowns
-
-**Strategy**
-
-| Depth | Peak | Trough | Recovery | Duration (days) |
-|---|---:|---:|---:|---:|
-| -30.5% | 2020-02-19 | 2020-03-16 | 2024-01-19 | 1,430 |
-| -25.2% | 2015-03-19 | 2016-02-11 | 2017-11-08 | 965 |
-| -19.0% | 2025-02-10 | 2025-04-08 | 2025-11-26 | 289 |
-| -16.3% | 2018-10-03 | 2018-12-24 | 2019-08-15 | 316 |
-| -11.6% | 2024-07-10 | 2024-08-05 | 2025-02-03 | 208 |
-
-**Equal-weight B&H (universe)**
-
-| Depth | Peak | Trough | Recovery | Duration (days) |
-|---|---:|---:|---:|---:|
-| -29.9% | 2020-02-19 | 2020-03-23 | 2021-01-08 | 324 |
-| -21.4% | 2025-02-19 | 2025-04-21 | 2025-10-01 | 224 |
-| -18.0% | 2015-04-15 | 2016-02-11 | 2016-07-15 | 457 |
-| -16.2% | 2018-10-03 | 2018-12-24 | 2019-02-15 | 135 |
-| -15.0% | 2022-01-03 | 2022-06-16 | 2022-08-12 | 221 |
+- **ETF-delisting bias.** The control lists only funds that still trade at the snapshot date; liquidated or merged funds in the same categories are absent, which flatters buy-and-hold of the control basket.
+- **Flat slippage.** Costs are 5 bps per side plus 3 bps slippage on every name regardless of size, which is optimistic for the smaller names and for re-entries after a gate release.
+- **No walk-forward.** Every parameter was set from standard practice and preregistered before the run, but there is no out-of-sample split; the ablation and sensitivity sets in `outputs/study.md` are the only robustness evidence.
+- **Latest-revision macro data.** FRED series carry a one-session publication lag but are the current revision, not the vintage available on the day.
+- **Next steps.** The 2026 case study against the real trade log, a point-in-time stock universe, and an out-of-sample split once the live window is long enough to support one.
 
 ## Figures
 
-![Strategy underwater plot](figures/underwater.png)
+![Overlay underwater plot](figures/underwater.png)
 
-![Rolling 12-month Sharpe (strategy)](figures/rolling_sharpe.png)
+![Rolling 12-month Sharpe (overlay)](figures/rolling_sharpe.png)
 
-![Rolling beta vs S&P 500 (strategy)](figures/rolling_beta.png)
+![Rolling beta vs S&P 500 (overlay)](figures/rolling_beta.png)
 
 ![Allocation over time](figures/weights.png)
 

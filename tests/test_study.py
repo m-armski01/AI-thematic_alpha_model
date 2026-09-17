@@ -101,13 +101,13 @@ def test_verdicts_follow_the_numbers():
     spy = {"cagr": 0.14, "sharpe": 0.69, "max_drawdown": -0.33}
     nm = {"cagr": 0.10, "sharpe": 0.52, "max_drawdown": -0.27}
     lose = study.headline_verdict(s, ew, spy, nm)
-    assert "do not beat" in lose and "lower than equal-weight" in lose
+    assert "does not beat" in lose and "lower than equal-weight" in lose
     win = study.headline_verdict({**s, "sharpe": 0.9, "cagr": 0.2}, ew, spy, nm)
-    assert "add something" in win and "higher than equal-weight" in win
+    assert "adds something" in win and "higher than equal-weight" in win
     sel = study.selection_verdict(
         {"cagr": 0.40, "sharpe": 1.1}, s, {"cagr": 0.40, "sharpe": 1.2}, ew
     )
-    assert "40.0% CAGR with the hindsight universe, 5.0% without" in sel
+    assert "40.0% CAGR on the owned basket, 5.0% on the ETF control" in sel
     before = pd.Series(
         {"membership": 10.0, "drift": 1.0, "gate": 2.0, "reweight": 7.0, "total": 20.0}
     )

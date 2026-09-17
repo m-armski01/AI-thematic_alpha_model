@@ -1,10 +1,10 @@
-# thematic-alpha study — brief v2: point-in-time ETF universe vs the hindsight control
+# thematic-alpha study — does the overlay generalise? ETF control and ablation
 
 Data snapshot 2026-09-11; window 2015-01-01 → 2026-09-11; costs 5 bps/side + 3 bps slippage; base currency EUR; top 5. All figures net of costs, annualized on the NYSE session calendar. Every parameter was *set from standard practice, not optimised* and committed before the run: [docs/preregistration_v2.md](../docs/preregistration_v2.md). Universes: `data/reference/universe_etf.csv` (17 names, etf), `data/reference/universe.csv` (12 names, base).
 
-## 1. ETF headline: strategy vs equal-weight B&H (ETF) vs SPY vs naive momentum
+## 1. ETF control: overlay vs equal-weight buy-and-hold (ETF) vs SPY vs naive momentum
 
-|  | Strategy (chosen) | S&P 500 (SPY) B&H | Equal-weight B&H (universe) | Naive momentum (top-N) |
+|  | Overlay (chosen) | S&P 500 (SPY) buy-and-hold | Equal-weight buy-and-hold (basket) | Naive momentum (top-N) |
 |---|---:|---:|---:|---:|
 | CAGR | 5.9% | 14.1% | 13.5% | 10.0% |
 | Sharpe | 0.31 | 0.69 | 0.71 | 0.52 |
@@ -12,22 +12,22 @@ Data snapshot 2026-09-11; window 2015-01-01 → 2026-09-11; costs 5 bps/side + 3
 | Annualized turnover | 9.75 | 0.09 | 0.23 | 22.98 |
 | Costs (% of final equity) | 5.89% | 0.02% | 0.05% | 11.17% |
 
-On the point-in-time ETF universe the strategy's CAGR is lower than equal-weight buy-and-hold of the same 17 ETFs (5.9% vs 13.5%), its Sharpe is lower (0.31 vs 0.71) and its maximum drawdown is deeper (-30.5% vs -29.9%). Against SPY it is lower on CAGR (14.1%) and lower on Sharpe (0.69); against naive top-5 momentum it is lower on Sharpe (0.52). **The rules do not beat holding the basket on this universe**, net of costs.
+On the point-in-time ETF control the overlay's CAGR is lower than equal-weight buy-and-hold of the same 17 ETFs (5.9% vs 13.5%), its Sharpe is lower (0.31 vs 0.71) and its maximum drawdown is deeper (-30.5% vs -29.9%). Against SPY it is lower on CAGR (14.1%) and lower on Sharpe (0.69); against naive top-5 momentum it is lower on Sharpe (0.52). **The overlay does not beat holding the ETF basket**, net of costs.
 
 ![ETF equity curves](study/etf_equity_curves.png)
 
-## 2. Selection bias: identical chosen rules, 12 stocks vs 17 ETFs
+## 2. Selection bias: identical chosen rules, the owned 12-stock basket vs the 17-ETF control
 
-|  | 12 stocks (hindsight) | 17 ETFs (point-in-time) | difference |
+|  | 12 stocks (owned basket) | 17 ETFs (point-in-time control) | difference |
 |---|---:|---:|---:|
-| Strategy (chosen rules) CAGR | 39.9% | 5.9% | 34.0% |
-| Strategy Sharpe | 1.13 | 0.31 | 0.82 |
-| Strategy max drawdown | -42.3% | -30.5% | -11.8% |
-| Equal-weight B&H CAGR | 40.4% | 13.5% | 26.9% |
-| Equal-weight B&H Sharpe | 1.19 | 0.71 | 0.47 |
-| SPY B&H CAGR (same in both) | 14.1% | 14.1% |  |
+| Overlay (chosen rules) CAGR | 39.9% | 5.9% | 34.0% |
+| Overlay Sharpe | 1.13 | 0.31 | 0.82 |
+| Overlay max drawdown | -42.3% | -30.5% | -11.8% |
+| Equal-weight buy-and-hold CAGR | 40.4% | 13.5% | 26.9% |
+| Equal-weight buy-and-hold Sharpe | 1.19 | 0.71 | 0.47 |
+| SPY buy-and-hold CAGR (same in both) | 14.1% | 14.1% |  |
 
-Same rules, same window, same costs: **39.9% CAGR with the hindsight universe, 5.9% without** — a difference of 34.0% per year and 0.82 of Sharpe (1.13 vs 0.31). The equal-weight buy-and-hold shows the same gap without any rules: 40.4% for the 12 stocks vs 13.5% for the 17 ETFs (26.9% per year, Sharpe 1.19 vs 0.71). The universe, not the rules, is where the Layer 1 return came from.
+Same rules, same window, same costs: **39.9% CAGR on the owned basket, 5.9% on the ETF control** — a difference of 34.0% per year and 0.82 of Sharpe (1.13 vs 0.31). The equal-weight buy-and-hold shows the same gap without any rules: 40.4% for the 12 stocks vs 13.5% for the 17 ETFs (26.9% per year, Sharpe 1.19 vs 0.71). The basket, not the rules, is where the return came from.
 
 ## 3. Turnover decomposition: L1 baseline vs chosen, both universes
 
@@ -48,7 +48,7 @@ In block mode a blocked entry that executes after the release counts as membersh
 
 ## 4. Ablation
 
-Rows are declared in `study.py` (`VARIANTS`): the L1 baseline, the cumulative chain in the brief's order, each knob alone on the baseline, the softmax sensitivity set on the chosen config, and two references (gate disabled; liquidity screen off). The liquidity screen is part of the universe definition and stays on in every other row; note that the screen also changes the equal-weight buy-and-hold (re-equalized on every eligibility change), so the screen-off row is not comparable to the benchmark table above. Nothing here was used to change a chosen value.
+Rows are declared in `study.py` (`L1`, `KNOBS`, `variants()`): the L1 baseline, the cumulative chain in the brief's order, each knob alone on the baseline, the softmax sensitivity set on the chosen config, and two references (gate disabled; liquidity screen off). The liquidity screen is part of the universe definition and stays on in every other row; note that the screen also changes the equal-weight buy-and-hold (re-equalized on every eligibility change), so the screen-off row is not comparable to the benchmark table above. Nothing here was used to change a chosen value.
 
 | Universe | Variant | CAGR | Sharpe | Max DD | Turnover | member. | drift | gate | reweight | Costs %eq | Held rank | Gate tr./yr | Avg cash | Eff. N |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|

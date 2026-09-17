@@ -93,7 +93,8 @@ def test_alpha_beta_recover_known_values():
     rng = np.random.default_rng(0)
     mkt = pd.Series(rng.normal(0.0004, 0.01, 500), idx)
     strat = 0.0002 + 1.3 * mkt
-    alpha, beta = m.ols_alpha_beta(strat, mkt)
+    alpha, beta, tstat = m.ols_alpha_beta(strat, mkt)
+    assert tstat > 1e6  # exact linear relation: the alpha standard error is ~0
     assert beta == pytest.approx(1.3, abs=1e-9)
     assert alpha == pytest.approx(0.0002 * 252, abs=1e-6)
     rb = m.rolling_beta(strat, mkt, 60)
