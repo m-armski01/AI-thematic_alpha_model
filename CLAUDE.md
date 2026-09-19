@@ -1,7 +1,9 @@
 # thematic-alpha
 
-Spec: `../AI sector quantbot SPEC.md`; brief v2 decisions are recorded in the task history and
-`docs/preregistration_v2.md`; the publishable-state rework is the work order in `IMPROVEMENTS.md`.
+Contributor and agent guide. The original build spec is not part of this repo; brief v2
+decisions are recorded in `docs/preregistration_v2.md`; the publishable-state rework is the work
+order in `docs/history/IMPROVEMENTS.md`; results and methodology are in `README.md` and
+`docs/methodology.md`.
 Status and results: `README.md` → "Build status" and `outputs/study.md`. Layer 1 (12-stock
 basket, PR #2), brief v2 (point-in-time ETF universe + turnover control, issue #3) and the
 IMPROVEMENTS rework (cash at DTB3, report reframing, regimes, momentum-window sensitivity,
