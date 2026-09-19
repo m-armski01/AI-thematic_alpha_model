@@ -33,3 +33,7 @@ venv/
 
 # OS
 .DS_Store
+
+# Local tooling and private notes (never published)
+.claude/
+private/
