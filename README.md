@@ -197,8 +197,10 @@ python -m thematic_alpha.study --configs configs/etf.yaml configs/base.yaml
 **Reproducibility.** Every config pins `run.end_date: 2026-09-11`, the snapshot behind the
 committed reports. Reruns on the same cached data are byte-identical. A fresh download will
 differ slightly from the committed numbers, because Yahoo re-adjusts historical closes for
-dividends and splits paid after the snapshot and FRED revises its series. To study a later
-window, raise `end_date` in the config and pass `--refresh`.
+dividends and splits paid after the snapshot and FRED revises its series. A fresh-clone test on
+2026-09-19 moved the headline CAGRs by at most 0.1 points (overlay 39.9% to 40.0%) and left
+Sharpe, drawdown, beta and the generated verdict unchanged. To study a later window, raise
+`end_date` in the config and pass `--refresh`.
 
 ## Repository
 
