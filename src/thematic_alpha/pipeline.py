@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from thematic_alpha.backtest import attribution as attr
 from thematic_alpha.backtest.benchmarks import (
     buy_and_hold_targets,
     naive_momentum_targets,
@@ -34,21 +35,22 @@ from thematic_alpha.data.prices import (
 from thematic_alpha.data.universe import Universe, apply_regime_start, load_universe
 from thematic_alpha.features.build import FeaturePanel, build_feature_panel
 from thematic_alpha.reporting import plots
-from thematic_alpha.reporting.report import LABELS, git_hash, render_report
+from thematic_alpha.reporting.report import LABELS, render_report
 from thematic_alpha.reporting.report import write_report as write_report_file
 from thematic_alpha.risk.drawdown import drawdown_table, underwater
 from thematic_alpha.risk.metrics import (
     annualize_rf,
+    cash_accrual_rates,
     compute_metrics,
     fx_contribution,
     rolling_beta,
     rolling_sharpe,
 )
+from thematic_alpha.risk.regimes import VIX_CALM_DEFAULT, compute_regimes
 from thematic_alpha.strategy.compose import ComposeResult, compose_target_weights
 from thematic_alpha.strategy.event_mask import EventMask, build_event_mask, load_earnings_dates
-from thematic_alpha.strategy.macro_gate import gate_factors
-from thematic_alpha.strategy.ranker import rank
-from thematic_alpha.strategy.sizing import announce_house_money
+from thematic_alpha.strategy.macro_gate import GateState, applied_gate, gate_factors
+from thematic_alpha.strategy.ranker import rank_on_signal_dates
 
 logger = logging.getLogger("thematic_alpha.pipeline")
 
@@ -73,6 +75,13 @@ class DataBundle:
         for b in self.benchmarks:
             out.setdefault(b, "USD")
         return out
+
+
+def output_dir(root: Path, config: Config) -> Path:
+    """Per-run output folder: ``outputs/<run.name>/``."""
+    out = root / "outputs" / config.run.name
+    out.mkdir(parents=True, exist_ok=True)
+    return out
 
 
 def _end_date(config: Config) -> str:
@@ -103,10 +112,12 @@ def load_data(config: Config, root: Path, refresh: bool = False) -> DataBundle:
 
     # --- prices -------------------------------------------------------------------------------
     tickers = universe.tickers + [b for b in benchmarks if b not in universe.tickers]
+    # yfinance treats ``end`` as exclusive, so ask for one more day than the last session wanted.
+    fetch_end = (pd.Timestamp(end) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
     raw, reports = load_prices(
         tickers,
         start,
-        end,
+        fetch_end,
         cache_dir,
         config.data.max_cache_age_days,
         refresh,
@@ -172,8 +183,17 @@ def build_features(bundle: DataBundle, config: Config) -> FeaturePanel:
         master=bundle.master,
         tickers=[t for t in bundle.universe.tickers if t in bundle.panel.tickers],
         config=config,
+        market_ticker=config.universe.benchmarks[0],
     )
     last = fp.eligible.index[-1]
+    if fp.first_dates is not None:
+        for t, row in fp.first_dates.iterrows():
+            logger.info(
+                "eligibility %-10s first price %s | history-eligible %s | liquidity-eligible "
+                "%s | eligible %s",
+                t,
+                *(("n/a" if pd.isna(v) else v.date()) for v in row),
+            )
     logger.info(
         "feature panel: %d rows x %d cols, %s -> %s, eligible on %s: %d/%d",
         len(fp.tidy),
@@ -190,10 +210,12 @@ def build_features(bundle: DataBundle, config: Config) -> FeaturePanel:
 @dataclass
 class StrategyBundle:
     signal_dates: pd.DatetimeIndex
-    gate: pd.DataFrame  # date x (vix_factor, yield_factor, oil_factor, exposure), all dates
-    ranker_weights: pd.DataFrame  # date x ticker, all dates
+    gate: pd.DataFrame  # daily: sub-gate factors / engaged states, exposure, risk_off
+    applied: GateState  # the gate as applied on signal dates
+    ranker_weights: pd.DataFrame  # signal_date x ticker
     event_mask: EventMask
     composed: ComposeResult
+    held_rank: pd.Series  # signal_date -> mean cross-sectional rank of held names (diagnostic)
 
     @property
     def target_weights(self) -> pd.DataFrame:
@@ -213,8 +235,14 @@ def build_strategy(
         end=config.run.end_date,
     )
     gate = gate_factors(features.macro, config.macro_gate)
+    applied = applied_gate(gate, dates, config.macro_gate)
     tickers = list(features.eligible.columns)
-    ranker_weights = rank(features.wide, features.eligible, config.ranker)
+    segment_of = bundle.universe.segment_of
+    exempt = [
+        t for t in tickers if segment_of.get(t) in set(config.macro_gate.block_exempt_segments)
+    ]
+    ranked = rank_on_signal_dates(features.wide, features.eligible, config.ranker, dates)
+    ranker_weights = ranked.weights
 
     if config.event_mask.enabled:
         earnings = load_earnings_dates(root / config.event_mask.file)
@@ -223,8 +251,15 @@ def build_strategy(
         )
     else:
         mask = None
-    announce_house_money(config.sizing)
-    composed = compose_target_weights(ranker_weights, gate["exposure"], dates, config.sizing, mask)
+    composed = compose_target_weights(
+        ranker_weights,
+        applied.exposure,
+        dates,
+        config.sizing,
+        mask,
+        risk_off=applied.risk_off if config.macro_gate.action == "block_increases" else None,
+        exempt=exempt,
+    )
     if mask is None:
         mask = EventMask(
             blocked=pd.DataFrame(False, index=bundle.master, columns=tickers), failed_open=[]
@@ -232,7 +267,7 @@ def build_strategy(
     exp = composed.exposure
     logger.info(
         "strategy: %d signal dates %s -> %s | exposure mean=%.2f min=%.2f (<1 on %d dates) | "
-        "avg names held=%.1f | avg invested=%.1f%%",
+        "avg names held=%.1f | avg invested=%.1f%% | avg held rank=%.2f (exit rank %d)",
         len(dates),
         dates.min().date(),
         dates.max().date(),
@@ -241,13 +276,17 @@ def build_strategy(
         int((exp < 1).sum()),
         (composed.target_weights > 0).sum(axis=1).mean(),
         100 * composed.target_weights.sum(axis=1).mean(),
+        ranked.held_rank.mean(),
+        config.ranker.effective_exit_rank,
     )
     return StrategyBundle(
         signal_dates=dates,
         gate=gate,
+        applied=applied,
         ranker_weights=ranker_weights,
         event_mask=mask,
         composed=composed,
+        held_rank=ranked.held_rank,
     )
 
 
@@ -273,22 +312,49 @@ def run_backtests(
     sessions = bundle.sessions_of[market]
     dates = strategy.signal_dates
     end = config.run.end_date
-
-    def _run(close, open_, targets):
-        return run_backtest(
-            close, targets, config.backtest, config.costs, open_, sessions, dates.min(), end
+    cash_rate = None
+    if config.backtest.cash_earns_rf:
+        # Same accrual series for the strategy and every benchmark (fair cash treatment).
+        idx = close_base.index[close_base.index >= dates.min()]
+        if end is not None:
+            idx = idx[idx <= pd.Timestamp(end)]
+        cash_rate = cash_accrual_rates(bundle.macro[config.risk.rf_series], idx)
+        logger.info(
+            "idle cash earns %s: mean %.2f%% p.a. over the window",
+            config.risk.rf_series,
+            bundle.macro[config.risk.rf_series].reindex(idx).mean(),
         )
 
+    def _run(close, open_, targets, band: float = 0.0):
+        return run_backtest(
+            close,
+            targets,
+            config.backtest,
+            config.costs,
+            open_,
+            sessions,
+            dates.min(),
+            end,
+            position_band=band,
+            cash_rate=cash_rate,
+        )
+
+    # The position band is a strategy turnover control; benchmarks never get it.
+    band = config.turnover.position_band
     targets = {
-        STRATEGY: strategy.target_weights,
         "sp500": single_asset_targets(market, dates.min()),
         "equal_weight_bh": buy_and_hold_targets(features.eligible, dates),
         "naive_momentum": naive_momentum_targets(
-            features.wide, features.eligible, dates, config.ranker.top_n
+            features.wide,
+            features.eligible,
+            dates,
+            config.ranker.top_n,
+            config.ranker.momentum_signal,
         ),
     }
-    results = {name: _run(close_base, open_base, tw) for name, tw in targets.items()}
-    results["strategy_local"] = _run(close_local, open_local, strategy.target_weights)
+    results = {STRATEGY: _run(close_base, open_base, strategy.target_weights, band)}
+    results.update({name: _run(close_base, open_base, tw) for name, tw in targets.items()})
+    results["strategy_local"] = _run(close_local, open_local, strategy.target_weights, band)
     for name in [STRATEGY, *BENCHMARK_ORDER]:
         r = results[name]
         logger.info(
@@ -303,6 +369,62 @@ def run_backtests(
 
 
 @dataclass
+class AttributionBundle:
+    trades: dict[str, pd.DataFrame]  # run name -> per-trade attribution
+    by_cause: dict[str, pd.Series]  # run name -> annualized turnover by cause (+ total)
+    gate: attr.GateDiagnostics  # transitions of the applied gate state over signal dates
+    gate_share: float  # gate turnover / total turnover of the strategy
+
+    @property
+    def strategy(self) -> pd.Series:
+        return self.by_cause[STRATEGY]
+
+
+def applied_gate_state(strategy: StrategyBundle) -> pd.Series:
+    """The gate state the book was actually subjected to, on signal dates."""
+    return strategy.applied.state
+
+
+def attribute_turnover(
+    strategy: StrategyBundle, results: dict[str, BacktestResult]
+) -> AttributionBundle:
+    """Step 1: split every run's turnover into membership / drift / gate / reweight."""
+    c = strategy.composed
+    books = {STRATEGY: (c.pre_gate_weights, c.post_gate_weights)}
+    trades, by_cause = {}, {}
+    for name in [STRATEGY, *BENCHMARK_ORDER]:
+        r = results[name]
+        p, q = books.get(name, (r.target_weights, r.target_weights))
+        trades[name] = attr.attribute_trades(r, p, q)
+        by_cause[name] = attr.turnover_by_cause(trades[name], attr.years_of(r))
+        expected = float(r.turnover_series.sum() / attr.years_of(r))
+        if abs(by_cause[name]["total"] - expected) > 1e-9 * max(expected, 1.0):
+            raise AssertionError(
+                f"{name}: attributed turnover {by_cause[name]['total']:.6f} != {expected:.6f}"
+            )
+    years = attr.years_of(results[STRATEGY])
+    gate = attr.gate_diagnostics(applied_gate_state(strategy), years)
+    s = by_cause[STRATEGY]
+    share = float(s["gate"] / s["total"]) if s["total"] > 0 else 0.0
+    logger.info(
+        "turnover by cause (strategy, x/yr): membership=%.2f drift=%.2f gate=%.2f reweight=%.2f "
+        "total=%.2f | gate: %d transitions (%.1f/yr), %d reverse within 1 and %d within 2 "
+        "signal dates, %.0f%% of turnover",
+        s["membership"],
+        s["drift"],
+        s["gate"],
+        s["reweight"],
+        s["total"],
+        gate.n_transitions,
+        gate.per_year,
+        gate.reversed_within_1,
+        gate.reversed_within_2,
+        100 * share,
+    )
+    return AttributionBundle(trades=trades, by_cause=by_cause, gate=gate, gate_share=share)
+
+
+@dataclass
 class RiskBundle:
     metrics: dict[str, dict]  # run name -> metrics dict
     drawdowns: dict[str, pd.DataFrame]  # run name -> top-5 drawdown table
@@ -311,15 +433,26 @@ class RiskBundle:
     fx: dict  # base vs local decomposition of the strategy
     rf_daily: pd.Series
     market_returns: pd.Series
+    # dimension -> (regime, run) x stats for the overlay and equal-weight buy-and-hold; None
+    # when the risk stage is run without the feature panel and the applied gate (study rows).
+    regimes: dict[str, pd.DataFrame] | None = None
 
 
 def compute_risk(
-    bundle: DataBundle, results: dict[str, BacktestResult], config: Config
+    bundle: DataBundle,
+    results: dict[str, BacktestResult],
+    config: Config,
+    features: FeaturePanel | None = None,
+    strategy: StrategyBundle | None = None,
 ) -> RiskBundle:
-    """Layer 1E: metrics for the strategy and every benchmark, all net of costs."""
+    """Layer 1E: metrics for the strategy and every benchmark, all net of costs; with the
+    feature panel and the applied gate also the performance-by-regime tables."""
     market = config.universe.benchmarks[0]
     close_base, _ = base_currency_prices(bundle, config.run.base_currency)
-    market_returns = close_base[market].pct_change(fill_method=None).rename("market")
+    sessions = bundle.sessions_of[market]
+    market_returns = (
+        close_base[market].reindex(sessions).ffill().pct_change(fill_method=None).rename("market")
+    )
     rf_daily = annualize_rf(bundle.macro[config.risk.rf_series])
 
     names = [STRATEGY, *BENCHMARK_ORDER]
@@ -328,16 +461,35 @@ def compute_risk(
         n: compute_metrics(results[n], rf_daily, market_returns, config.risk, schedule)
         for n in names
     }
-    drawdowns = {n: drawdown_table(results[n].equity_curve) for n in names}
+    drawdowns = {n: drawdown_table(results[n].on_market_calendar()[0]) for n in names}
     strat = results[STRATEGY]
-    rf = rf_daily.reindex(strat.daily_returns.index).ffill().fillna(0.0)
+    _, strat_returns = strat.on_market_calendar()
+    rf = rf_daily.reindex(strat_returns.index).ffill().fillna(0.0)
     rb = rolling_beta(
-        strat.daily_returns - rf,
-        market_returns.reindex(strat.daily_returns.index) - rf,
+        strat_returns - rf,
+        market_returns.reindex(strat_returns.index) - rf,
         config.risk.rolling_beta_window,
     )
-    rs = rolling_sharpe(strat.daily_returns - rf)
+    rs = rolling_sharpe(strat_returns - rf)
     fx = fx_contribution(strat, results["strategy_local"])
+    regimes = None
+    if features is not None and strategy is not None:
+        g = config.macro_gate
+        regimes = compute_regimes(
+            {n: results[n].on_market_calendar()[1] for n in [STRATEGY, "equal_weight_bh"]},
+            strat_returns.index,
+            features.macro,
+            strategy.applied.state,
+            strategy.applied.action,
+            vix_calm=(
+                g.vix_release_threshold
+                if g.vix_release_threshold is not None
+                else min(VIX_CALM_DEFAULT, g.vix_threshold)
+            ),
+            vix_stress=g.vix_threshold,
+            rate_column=f"dgs10_chg_{g.yield_change_window}d",
+            rate_threshold=g.yield_change_threshold,
+        )
     m = metrics[STRATEGY]
     logger.info(
         "risk: strategy CAGR=%.1f%% vol=%.1f%% sharpe=%.2f maxDD=%.1f%% | FX contribution "
@@ -357,6 +509,7 @@ def compute_risk(
         fx=fx,
         rf_daily=rf_daily,
         market_returns=market_returns,
+        regimes=regimes,
     )
 
 
@@ -367,6 +520,7 @@ def make_figures(
     features: FeaturePanel,
     config: Config,
     fig_dir: Path,
+    attribution: AttributionBundle | None = None,
 ) -> dict[str, Path]:
     """Layer 1F figures -> outputs/figures/*.png."""
     strat = results[STRATEGY]
@@ -377,7 +531,9 @@ def make_figures(
             LABELS,
             fig_dir / "equity_curves.png",
         ),
-        "underwater": plots.underwater(underwater(strat.equity_curve), fig_dir / "underwater.png"),
+        "underwater": plots.underwater(
+            underwater(strat.on_market_calendar()[0]), fig_dir / "underwater.png"
+        ),
         "rolling_sharpe": plots.rolling_line(
             risk.rolling_sharpe,
             "Rolling 12-month Sharpe, strategy",
@@ -394,12 +550,30 @@ def make_figures(
         ),
         "weights": plots.weights_area(strat.weights_history, fig_dir / "weights.png"),
         "gate": plots.gate_and_vix(
-            strategy.gate["exposure"].reindex(idx),
+            strategy.applied.state.astype(float)
+            .reindex(idx)
+            .ffill()
+            .fillna(1.0 if strategy.applied.action == "scale" else 0.0),
             features.macro["vix_level"].reindex(idx),
             config.macro_gate.vix_threshold,
             fig_dir / "gate_vs_vix.png",
+            label=(
+                "Applied gate exposure"
+                if strategy.applied.action == "scale"
+                else "Risk-off (1 = block increases)"
+            ),
         ),
     }
+    figs["universe"] = plots.universe_composition(
+        features.eligible.reindex(idx), fig_dir / "universe_composition.png"
+    )
+    if attribution is not None:
+        figs["turnover"] = plots.turnover_by_cause(
+            {n: attribution.by_cause[n] for n in [STRATEGY, *BENCHMARK_ORDER]},
+            LABELS,
+            attr.CAUSES,
+            fig_dir / "turnover_by_cause.png",
+        )
     return figs
 
 
@@ -412,18 +586,36 @@ def write_report(
     config: Config,
     root: Path,
     n_flagged: int,
+    attribution: AttributionBundle | None = None,
 ) -> Path:
-    out_dir = root / "outputs"
-    figures = make_figures(results, risk, strategy, features, config, out_dir / "figures")
+    out_dir = output_dir(root, config)
+    figures = make_figures(
+        results, risk, strategy, features, config, out_dir / "figures", attribution
+    )
     c = strategy.composed
+    if attribution is not None:
+        attribution.trades[STRATEGY].round(10).to_csv(
+            out_dir / "turnover_attribution.csv", index=False
+        )
+    strategy.held_rank.round(6).to_csv(out_dir / "held_rank.csv")
     text = render_report(
         config=config,
-        commit=git_hash(root),
         quality_summary={
             "n_tickers": len(bundle.panel.tickers),
             "n_macro": len(bundle.macro_raw.columns),
             "n_flagged": n_flagged,
             "threshold": config.data.suspicious_return_threshold,
+            "mics": sorted({cal.mic_for(ex) for ex in bundle.exchange_of.values()}),
+        },
+        universe_summary={
+            "file": config.universe.file,
+            "n_names": len(bundle.universe.tickers),
+            "segments": dict(bundle.universe.frame["segment"].value_counts().sort_index()),
+            "first_dates": features.first_dates,
+            "start": strategy.signal_dates.min(),
+            "currencies": sorted(
+                {c for c in bundle.universe.currency_of.values() if c != config.run.base_currency}
+            ),
         },
         strategy_summary={
             "n_signal_dates": len(strategy.signal_dates),
@@ -433,12 +625,33 @@ def write_report(
             "entries_blocked": c.entries_blocked,
             "masked_ticker_dates": c.masked_ticker_dates,
             "n_failed_open": len(c.failed_open),
+            "held_rank_mean": float(strategy.held_rank.mean()),
+            "exit_rank": config.ranker.effective_exit_rank,
+            "gate_action": strategy.applied.action,
+            "n_risk_off": int(strategy.applied.risk_off.sum()),
+            "n_evaluated": int(strategy.applied.evaluated.sum()),
+            "gate_blocked": c.gate_blocked,
+            "exempt": [
+                t
+                for t in strategy.target_weights.columns
+                if bundle.universe.segment_of.get(t) in set(config.macro_gate.block_exempt_segments)
+            ],
         },
         metrics=risk.metrics,
         drawdowns=risk.drawdowns,
         fx=risk.fx,
         figures=figures,
         figure_root=out_dir,
+        regimes=risk.regimes,
+        turnover=(
+            {
+                "by_cause": attribution.by_cause,
+                "gate": attribution.gate.as_dict(),
+                "gate_share": attribution.gate_share,
+            }
+            if attribution is not None
+            else None
+        ),
     )
     path = write_report_file(text, out_dir / "report.md")
     logger.info("report -> %s (%d figures)", path, len(figures))
@@ -459,7 +672,7 @@ def write_data_quality(bundle: DataBundle, config: Config, root: Path) -> tuple[
     text = quality.render_quality_report(
         rows, bundle.macro_raw, config.data.suspicious_return_threshold
     )
-    path = quality.write_quality_report(text, root / "outputs" / "data_quality.md")
+    path = quality.write_quality_report(text, output_dir(root, config) / "data_quality.md")
     n_flags = sum(len(r.suspicious) for r in rows)
     logger.info(
         "data quality report -> %s (%d tickers, %d flagged returns)", path, len(rows), n_flags

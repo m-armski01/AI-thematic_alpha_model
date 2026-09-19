@@ -1,14 +1,20 @@
-# Data cache (re-downloadable) and generated outputs. The final report, data-quality report and
-# figures ARE committed so the README renders on GitHub; everything else under outputs/ is not.
+# Data cache (re-downloadable) and generated outputs. Per run (outputs/<run.name>/) the report,
+# data-quality report and figures ARE committed so the README renders on GitHub, as are the
+# study report and its figures; everything else under outputs/ is not.
 data/cache/
+!data/cache/.gitkeep
 outputs/*
 !outputs/.gitkeep
-!outputs/report.md
-!outputs/data_quality.md
-!outputs/figures/
-outputs/figures/*
-!outputs/figures/.gitkeep
-!outputs/figures/*.png
+!outputs/study.md
+!outputs/*/
+outputs/*/*
+!outputs/*/report.md
+!outputs/*/data_quality.md
+!outputs/*/figures/
+outputs/*/figures/*
+!outputs/*/figures/*.png
+!outputs/study/*.png
+!outputs/study/*.csv
 
 # Python
 __pycache__/
@@ -27,4 +33,3 @@ venv/
 
 # OS
 .DS_Store
-!data/cache/.gitkeep

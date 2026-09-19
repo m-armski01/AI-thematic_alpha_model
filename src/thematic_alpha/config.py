@@ -38,11 +38,19 @@ class DataConfig(_Base):
     # FRED values keyed by observation date are typically published the next day. Shift macro
     # series by this many sessions before any feature/gate sees them (conservative, no lookahead).
     macro_publication_lag_days: int = Field(default=1, ge=0)
+    # Liquidity screen (base currency): a name is eligible only once its 21-day average daily
+    # traded value is at least this. 0.0 = off (Layer 1); applied only when > 0.
+    min_dollar_volume_21d: float = Field(default=0.0, ge=0.0)
 
 
 class UniverseConfig(_Base):
     file: str
     benchmarks: list[str]
+    # Report framing only. "owned_portfolio": the names are the author's holdings, a given, and
+    # the report is a trade-vs-hold study against equal-weight buy-and-hold of the same basket.
+    # "point_in_time": a category list with dated eligibility, reported as the generalisation
+    # control (and its residual ETF-delisting bias).
+    selection: Literal["owned_portfolio", "point_in_time"] = "owned_portfolio"
 
 
 class FeaturesConfig(_Base):
@@ -64,13 +72,66 @@ class MacroGateConfig(_Base):
     oil_scale_factor: float = Field(ge=0.0, le=1.0)
     min_exposure: float = Field(ge=0.0, le=1.0)
     combination: Literal["multiplicative", "min", "average"] = "multiplicative"
+    # (a) What the gate does. "scale" multiplies the book by the exposure (Layer 1).
+    # "block_increases": any engaged sub-gate is a boolean risk-off state; non-exempt names are
+    # capped at their previous target (no increases, no new entries), blocked weight stays in
+    # cash, and the scale factors / min_exposure are unused.
+    action: Literal["scale", "block_increases"] = "scale"
+    # Universe ``segment`` values that trade freely while risk-off (e.g. ["defensive"]).
+    block_exempt_segments: list[str] = Field(default_factory=list)
+    # (b) Schmitt trigger per sub-gate: engage when the signal is above the engage threshold,
+    # release only when it is at or below the release threshold, hold the state in between.
+    # None -> release = engage, which is exactly the Layer 1 comparator.
+    vix_release_threshold: float | None = None
+    yield_release_threshold: float | None = None
+    oil_release_threshold: float | None = None
+    # (c) Evaluation cadence. "weekly": the gate is sampled on every signal date (Layer 1).
+    # "monthly": sampled on the last weekly signal date of each month (plus the first signal
+    # date) and held constant on the weekly signal dates in between; ranking stays weekly.
+    evaluation: Literal["weekly", "monthly"] = "weekly"
+
+    @model_validator(mode="after")
+    def _release_not_above_engage(self) -> MacroGateConfig:
+        for name, engage, release in (
+            ("vix", self.vix_threshold, self.vix_release_threshold),
+            ("yield", self.yield_change_threshold, self.yield_release_threshold),
+            ("oil", self.oil_change_threshold, self.oil_release_threshold),
+        ):
+            if release is not None and release > engage:
+                raise ValueError(
+                    f"{name}_release_threshold={release} must not exceed the engage "
+                    f"threshold {engage}"
+                )
+        return self
+
+    def release_threshold(self, name: str) -> float:
+        engage = {
+            "vix": self.vix_threshold,
+            "yield": self.yield_change_threshold,
+            "oil": self.oil_change_threshold,
+        }[name]
+        release = {
+            "vix": self.vix_release_threshold,
+            "yield": self.yield_release_threshold,
+            "oil": self.oil_release_threshold,
+        }[name]
+        return engage if release is None else release
 
 
 class RankerConfig(_Base):
-    method: Literal["momentum_zscore", "equal_weight", "ml"] = "momentum_zscore"
+    method: Literal["momentum_zscore", "equal_weight"] = "momentum_zscore"
+    # The momentum feature the ranker (and the naive-momentum benchmark) sorts on. Must be one
+    # of the computed ``mom_<window>`` features (``features.momentum_windows``). Layer 1: mom_63.
+    momentum_signal: str = "mom_63"
     top_n: int = Field(gt=0)
-    weighting: Literal["equal", "inverse_vol", "conviction_tier"] = "conviction_tier"
+    weighting: Literal["equal", "inverse_vol", "conviction_tier", "softmax"] = "conviction_tier"
     conviction_tiers: list[float]
+    # softmax over the held names' momentum z-scores: w_i ∝ exp((z_i - max z) / τ). Neutral
+    # default 1.0 is unused unless weighting == "softmax".
+    softmax_temperature: float = Field(default=1.0, gt=0.0)
+    # Hysteresis (fixed slots): a held name stays while its rank is <= exit_rank; a name enters
+    # only at rank <= top_n and only into a vacant slot. None -> top_n, which is plain top-N.
+    exit_rank: int | None = None
 
     @model_validator(mode="after")
     def _tiers_cover_top_n(self) -> RankerConfig:
@@ -79,7 +140,13 @@ class RankerConfig(_Base):
                 f"conviction_tiers has {len(self.conviction_tiers)} entries "
                 f"but top_n={self.top_n}; need at least top_n tiers."
             )
+        if self.exit_rank is not None and self.exit_rank < self.top_n:
+            raise ValueError(f"exit_rank={self.exit_rank} must be >= top_n={self.top_n}")
         return self
+
+    @property
+    def effective_exit_rank(self) -> int:
+        return self.top_n if self.exit_rank is None else self.exit_rank
 
 
 class EventMaskConfig(_Base):
@@ -89,17 +156,17 @@ class EventMaskConfig(_Base):
     block_new_entries_only: bool = True
 
 
-class HouseMoneyConfig(_Base):
-    enabled: bool = True
-    trigger_gain_pct: float = Field(gt=0.0)
-    action: Literal["recover_principal"] = "recover_principal"
-    trailing_stop_pct: float = Field(gt=0.0, lt=1.0)
-
-
 class SizingConfig(_Base):
-    house_money: HouseMoneyConfig
     max_position_weight: float = Field(gt=0.0, le=1.0)
     cash_floor: float = Field(ge=0.0, le=1.0)
+
+
+class TurnoverConfig(_Base):
+    """Turnover controls applied in the engine, to strategy runs only (benchmarks never)."""
+
+    # Held->held trades whose |target - drifted weight| is below this are skipped; the residual
+    # stays in cash. Full exits and new entries always trade. 0.0 = off (Layer 1).
+    position_band: float = Field(default=0.0, ge=0.0, lt=1.0)
 
 
 class BacktestConfig(_Base):
@@ -108,6 +175,9 @@ class BacktestConfig(_Base):
     execution_lag_days: int = Field(ge=0)
     execution_price: Literal["open", "close"] = "open"
     initial_capital: float = Field(gt=0.0)
+    # Idle cash accrues the risk-free rate (``risk.rf_series``, calendar-day basis) for the
+    # strategy and every benchmark alike. False = cash earns 0 (Layer 1).
+    cash_earns_rf: bool = False
 
 
 class CostsConfig(_Base):
@@ -121,7 +191,6 @@ class RiskConfig(_Base):
     rf_series: str = "DTB3"
     var_confidence: list[float]
     rolling_beta_window: int = Field(gt=0)
-    monte_carlo_runs: int = Field(gt=0)
 
     @field_validator("var_confidence")
     @classmethod
@@ -132,19 +201,19 @@ class RiskConfig(_Base):
         return v
 
 
-class CVConfig(_Base):
-    n_splits: int = Field(gt=1)
-    purge_days: int = Field(ge=0)
-    embargo_days: int = Field(ge=0)
+class ReportConfig(_Base):
+    """Identity and framing of the generated report (documentation-as-config). The tone and
+    every verdict sentence are generated in code; these fields only fix what the run is called
+    and what it claims to test."""
 
-
-class MLConfig(_Base):
-    enabled: bool = False
-    horizon_days: int = Field(gt=0)
-    label: str = "outperform_basket_median"
-    models: list[str]
-    cv: CVConfig
-    feature_lag_days: int = Field(ge=0)
+    title: str = "thematic-alpha report"
+    subtitle: str = ""
+    author: str = ""
+    thesis: str = ""  # the hypothesis under test, 2-4 sentences; omitted from the report if empty
+    disclaimer: str = (
+        "Research system, not a trading system. Nothing here is investment advice. "
+        "All figures are net of transaction costs."
+    )
 
 
 class Config(_Base):
@@ -158,10 +227,21 @@ class Config(_Base):
     ranker: RankerConfig
     event_mask: EventMaskConfig
     sizing: SizingConfig
+    turnover: TurnoverConfig = TurnoverConfig()
     backtest: BacktestConfig
     costs: CostsConfig
     risk: RiskConfig
-    ml: MLConfig
+    report: ReportConfig = ReportConfig()
+
+    @model_validator(mode="after")
+    def _momentum_signal_is_computed(self) -> Config:
+        allowed = [f"mom_{w}" for w in self.features.momentum_windows]
+        if self.ranker.momentum_signal not in allowed:
+            raise ValueError(
+                f"ranker.momentum_signal={self.ranker.momentum_signal!r} is not one of the "
+                f"computed momentum features {allowed} (features.momentum_windows)"
+            )
+        return self
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Config:

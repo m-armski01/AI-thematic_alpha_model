@@ -1,20 +1,26 @@
+# HEADLINE RUN. The author's own 12-stock AI / datacenter basket (owned_portfolio), 2015-2026:
+# does the active macro overlay beat equal-weight buy-and-hold of the same basket? Chosen values
+# live here; every neutral default in config.py reproduces Layer 1. Annualised metrics are
+# suppressed by the report on windows under 24 months.
 run:
   name: "base"
   seed: 42
   start_date: "2015-01-01"
-  end_date: null              # null = today
+  end_date: "2026-09-11"      # pinned data snapshot (null = today); see README "Reproduction"
   base_currency: "EUR"        # EUR | USD
 
 data:
-  max_cache_age_days: 1
+  max_cache_age_days: 30      # the snapshot above is served from the cache; --refresh re-downloads
   min_history_days: 252       # exclude ticker if trailing history < this
   history_start: "1998-01-01" # download start; run.start_date is the backtest start
   suspicious_return_threshold: 0.25   # |1d return| above this is flagged in data_quality.md
   macro_publication_lag_days: 1       # FRED obs at t become usable at t+1 session
+  min_dollar_volume_21d: 5000000      # liquidity screen: 21d ADV >= 5M base ccy (L1: 0 = off)
 
 universe:
   file: "data/reference/universe.csv"
-  benchmarks: ["^GSPC", "QQQ", "SOXX"]
+  benchmarks: ["SPY", "QQQ", "SOXX"]   # [0] is the market: beta, features, S&P B&H
+  selection: "owned_portfolio"  # owned_portfolio | point_in_time (report framing only)
 
 features:
   momentum_windows: [21, 63, 126, 252]
@@ -24,22 +30,31 @@ features:
 
 macro_gate:
   enabled: true
-  vix_threshold: 25.0         # above this, scale exposure down
+  vix_threshold: 25.0         # engage above this
+  vix_release_threshold: 20.0 # Schmitt trigger: release at or below this (L1: null = engage)
   vix_scale_factor: 0.5
   yield_change_window: 21
-  yield_change_threshold: 0.40   # +40bps in 21d => risk-off
+  yield_change_threshold: 0.40   # +40bps in 21d => engage
+  yield_release_threshold: 0.32  # release at or below +32bp (0.8 x engage; L1: null)
   yield_scale_factor: 0.7
   oil_change_window: 21
-  oil_change_threshold: 0.20     # +20% in 21d => risk-off
+  oil_change_threshold: 0.20     # +20% in 21d => engage
+  oil_release_threshold: 0.16    # release at or below +16% (0.8 x engage; L1: null)
   oil_scale_factor: 0.85
-  min_exposure: 0.30             # floor: never fully de-risk
+  min_exposure: 0.30             # floor: never fully de-risk (unused in block mode)
   combination: "multiplicative"  # multiplicative | min | average
+  action: "block_increases"      # scale | block_increases (L1: scale)
+  block_exempt_segments: ["defensive"]   # segments that trade freely while risk-off (none here)
+  evaluation: "monthly"          # weekly | monthly: gate sampled on the last signal date of each month (L1: weekly)
 
 ranker:
-  method: "momentum_zscore"      # momentum_zscore | equal_weight | ml
+  method: "momentum_zscore"      # momentum_zscore | equal_weight
+  momentum_signal: "mom_63"     # ranking feature; sensitivity set in the study: mom_126, mom_252
   top_n: 5
-  weighting: "conviction_tier"   # equal | inverse_vol | conviction_tier
+  exit_rank: 8                   # rank buffer: enter at <= top_n, exit below this (L1: null = top_n)
+  weighting: "equal"             # equal | inverse_vol | conviction_tier | softmax (L1: conviction_tier)
   conviction_tiers: [0.30, 0.25, 0.20, 0.15, 0.10]
+  softmax_temperature: 1.0       # only used by weighting: softmax (sensitivity set: 0.5, 1, 2)
 
 event_mask:
   enabled: true
@@ -48,13 +63,11 @@ event_mask:
   block_new_entries_only: true   # true = don't add; existing positions untouched
 
 sizing:
-  house_money:
-    enabled: true
-    trigger_gain_pct: 0.50       # at +50% unrealized
-    action: "recover_principal"  # trim to return original cost basis
-    trailing_stop_pct: 0.25      # on the remainder
   max_position_weight: 0.35
   cash_floor: 0.0
+
+turnover:
+  position_band: 0.02            # skip held->held trades within 2pp of the drifted weight (L1: 0.0)
 
 backtest:
   rebalance: "weekly"            # weekly | monthly
@@ -62,6 +75,7 @@ backtest:
   execution_lag_days: 1          # signal at t, execute at t+1
   execution_price: "open"        # open | close
   initial_capital: 10000.0
+  cash_earns_rf: true            # idle cash accrues DTB3 (calendar-day basis), all runs (L1: false)
 
 costs:
   model: "bps"                   # bps | flat_fee | both
@@ -73,15 +87,16 @@ risk:
   rf_series: "DTB3"
   var_confidence: [0.95, 0.99]
   rolling_beta_window: 60
-  monte_carlo_runs: 10000
 
-ml:
-  enabled: false                 # Layer 2 flag
-  horizon_days: 21
-  label: "outperform_basket_median"
-  models: ["logistic", "random_forest", "lightgbm"]
-  cv:
-    n_splits: 5
-    purge_days: 21
-    embargo_days: 5
-  feature_lag_days: 1
+report:                          # identity and framing only; tone and verdicts are generated in code
+  title: "Does an active macro overlay beat holding the basket?"
+  subtitle: "A personal research study on the author's 12-stock AI / datacenter basket, 2015-2026"
+  author: ""                     # left blank on purpose; fill in before publishing
+  thesis: >-
+    A high-beta AI / datacenter basket is most exposed to macro stress: equity-volatility spikes
+    (VIX), sharp rises in the 10-year yield and oil shocks compress the multiples of long-duration
+    growth names first. The overlay ranks the basket on 3-month momentum, holds the top five, and
+    stops adding risk while any of the three macro triggers is engaged. The prediction under test
+    is that the overlay preserves most of the basket's upside while cutting its drawdowns in
+    stress regimes; if it does not, buy-and-hold is the better policy.
+  disclaimer: "Research system, not a trading system. Nothing here is investment advice. All figures are net of transaction costs."

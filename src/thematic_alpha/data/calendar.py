@@ -10,8 +10,15 @@ from __future__ import annotations
 
 import pandas as pd
 
-# universe.csv exchange labels -> ISO 10383 MIC used by exchange_calendars.
-EXCHANGE_TO_MIC = {"NASDAQ": "XNYS", "NYSE": "XNYS", "KRX": "XKRX"}
+# universe.csv exchange labels -> ISO 10383 MIC used by exchange_calendars. Every US venue
+# (NYSE, NYSE Arca, NASDAQ, Cboe BZX) keeps the NYSE trading calendar, so they all map to XNYS.
+EXCHANGE_TO_MIC = {
+    "NASDAQ": "XNYS",
+    "NYSE": "XNYS",
+    "NYSE Arca": "XNYS",
+    "Cboe BZX": "XNYS",
+    "KRX": "XKRX",
+}
 BENCHMARK_MIC = "XNYS"
 
 

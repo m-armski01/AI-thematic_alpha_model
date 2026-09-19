@@ -66,11 +66,32 @@ METRIC_ROWS: list[tuple[str, str, object]] = [
 ]
 
 
-def metrics_table(metrics: dict[str, dict], labels: dict[str, str], order: list[str]) -> str:
+# Rows that only make sense over a multi-year window; suppressed in reports on short windows.
+ANNUALISED_KEYS = {"cagr", "calmar", "alpha_ann"}
+# Rows that compare against the S&P 500; they belong in the market-context appendix, not in the
+# headline overlay-vs-buy-and-hold table.
+MARKET_RELATIVE_KEYS = {"alpha_ann", "beta"}
+
+
+def metrics_table(
+    metrics: dict[str, dict],
+    labels: dict[str, str],
+    order: list[str],
+    exclude: set[str] = frozenset(),
+    suppress: set[str] = frozenset(),
+    suppressed_text: str = "n/a",
+) -> str:
+    """Markdown table of ``METRIC_ROWS`` (minus ``exclude``) for the runs in ``order``; rows in
+    ``suppress`` print ``suppressed_text`` instead of a value."""
     headers = ["Metric", *[labels.get(n, n) for n in order]]
     rows = []
     for label, key, fmt in METRIC_ROWS:
-        rows.append([label, *[fmt(metrics[n].get(key)) for n in order]])  # type: ignore[operator]
+        if key in exclude:
+            continue
+        if key in suppress:
+            rows.append([label, *[suppressed_text for _ in order]])
+        else:
+            rows.append([label, *[fmt(metrics[n].get(key)) for n in order]])  # type: ignore[operator]
     return markdown_table(headers, rows)
 
 

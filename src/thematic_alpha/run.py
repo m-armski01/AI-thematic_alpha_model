@@ -17,6 +17,7 @@ from pathlib import Path
 from thematic_alpha.config import Config
 from thematic_alpha.data.prices import load_ticker
 from thematic_alpha.data.universe import load_universe
+from thematic_alpha.reporting.report import git_hash
 
 # The single ticker exercised by the Layer 0 Definition of Done.
 LAYER0_TICKER = "NVDA"
@@ -96,7 +97,8 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
     t0 = time.perf_counter()
     features = pipeline.build_features(bundle, config)
     t_feat = time.perf_counter() - t0
-    feat_path = root / "outputs" / "feature_panel.parquet"
+    out_dir = pipeline.output_dir(root, config)
+    feat_path = out_dir / "feature_panel.parquet"
     features.tidy.to_parquet(feat_path)
     last = features.dates[-1]
     print(
@@ -107,14 +109,20 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
 
     strategy = pipeline.build_strategy(bundle, features, config, root)
     tw = strategy.target_weights
-    tw_path = root / "outputs" / "target_weights.csv"
+    tw_path = out_dir / "target_weights.csv"
     tw.round(6).to_csv(tw_path)
     c = strategy.composed
     print(
         f"[Layer 1C] {len(strategy.signal_dates)} signal dates | exposure mean "
         f"{c.exposure.mean():.2f} (min {c.exposure.min():.2f}) | avg invested "
-        f"{100 * tw.sum(axis=1).mean():.0f}% | event mask: {c.entries_blocked} entries blocked "
-        f"pre-earnings, {len(c.failed_open)} tickers failed open -> {tw_path.name}"
+        f"{100 * tw.sum(axis=1).mean():.0f}% | event mask: "
+        + (
+            f"{c.entries_blocked} entries blocked pre-earnings, {len(c.failed_open)} tickers "
+            "failed open"
+            if config.event_mask.enabled
+            else "disabled"
+        )
+        + f" | avg held rank {strategy.held_rank.mean():.2f} -> {tw_path.name}"
     )
 
     t0 = time.perf_counter()
@@ -131,7 +139,18 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
         )
     print(f"[Layer 1D] 4 backtests + local-currency run in {t_bt:.1f}s")
 
-    risk = pipeline.compute_risk(bundle, results, config)
+    attribution = pipeline.attribute_turnover(strategy, results)
+    s = attribution.strategy
+    g = attribution.gate
+    print(
+        "[Layer 2.1] turnover by cause (strategy, x/yr): "
+        + " ".join(f"{c}={s[c]:.2f}" for c in [*s.index[:-1], "total"])
+        + f" | gate: {g.n_transitions} transitions ({g.per_year:.1f}/yr), "
+        f"{g.reversed_within_1} reverse within 1, {g.reversed_within_2} within 2 signal dates, "
+        f"{100 * attribution.gate_share:.0f}% of turnover"
+    )
+
+    risk = pipeline.compute_risk(bundle, results, config, features, strategy)
     print(f"[Layer 1E] {'run':<16} {'CAGR':>7} {'vol':>7} {'Sharpe':>7} {'maxDD':>7} {'costs%':>7}")
     for name in [pipeline.STRATEGY, *pipeline.BENCHMARK_ORDER]:
         m = risk.metrics[name]
@@ -149,7 +168,7 @@ def run_layer1(config: Config, root: Path, refresh: bool) -> int:
 
     t0 = time.perf_counter()
     report_path = pipeline.write_report(
-        bundle, features, strategy, results, risk, config, root, n_flagged
+        bundle, features, strategy, results, risk, config, root, n_flagged, attribution
     )
     print(f"[Layer 1F] report -> {report_path} ({time.perf_counter() - t0:.1f}s)")
     return 0
@@ -162,6 +181,8 @@ def main(argv: list[str] | None = None) -> int:
     config = Config.from_yaml(args.config)
     # Paths in the config are relative to the project root (configs/base.yaml -> project root).
     root = args.config.resolve().parent.parent
+    # Logged, not embedded: the report must stay byte-identical across commits.
+    logging.info("code version %s", git_hash(root))
 
     if args.layer == 0:
         return run_layer0(config, root, refresh=args.refresh)

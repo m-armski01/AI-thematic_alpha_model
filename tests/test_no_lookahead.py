@@ -11,7 +11,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tests.synthetic import Market, build_features, make_config, make_market, truncate
+from tests.synthetic import (
+    CHOSEN,
+    LAYER1_NEUTRAL,
+    Market,
+    build_features,
+    make_config,
+    make_market,
+    truncate,
+)
 from thematic_alpha.data.prices import build_price_panel
 
 
@@ -116,3 +124,32 @@ def test_c_future_spike_leaves_no_trace_before_it(market, config, baseline):
         out[after]["mom_rank"].fillna(-1).to_numpy(),
         baseline[after]["mom_rank"].fillna(-1).to_numpy(),
     )
+
+
+# --- strategy level (brief v2): stateful selection and the gate are pure functions of history.
+
+
+@pytest.mark.parametrize("settings", [LAYER1_NEUTRAL, CHOSEN], ids=["neutral", "chosen"])
+@pytest.mark.parametrize("pos", [599, 779])  # Fridays: the cut week is a complete signal week
+def test_e_strategy_targets_and_trades_unchanged_when_future_is_deleted(settings, pos):
+    from tests.golden import FIXTURES, wide_market
+    from tests.synthetic import run_pipeline, wide_config
+
+    market = wide_market()
+    cfg = wide_config(**settings)
+    _, _, full_strategy, full_results = run_pipeline(market, cfg, FIXTURES)
+    t = market.master[pos]
+    assert t.weekday() == 4
+    cut_cfg = wide_config(**settings, run={"end_date": str(t.date())})
+    _, _, cut_strategy, cut_results = run_pipeline(truncate(market, t), cut_cfg, FIXTURES)
+    tw_full = full_strategy.target_weights.loc[:t]
+    tw_cut = cut_strategy.target_weights
+    pd.testing.assert_frame_equal(tw_cut, tw_full.loc[tw_cut.index])
+    assert len(tw_cut) >= len(tw_full) - 1  # only the signal on t itself may be missing
+    hr_full = full_strategy.held_rank.loc[:t]
+    pd.testing.assert_series_equal(
+        cut_strategy.held_rank, hr_full.loc[cut_strategy.held_rank.index]
+    )
+    trades_full = full_results["strategy"].trades
+    trades_full = trades_full[trades_full["date"] <= t].reset_index(drop=True)
+    pd.testing.assert_frame_equal(cut_results["strategy"].trades, trades_full)
