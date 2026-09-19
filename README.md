@@ -19,7 +19,7 @@ institutional alpha strategy, a live trading system, or a claim about AI stocks 
 | Question | Answer |
 |---|---|
 | Does the overlay beat holding the basket, 2015–2026? | **No.** Slightly lower return and Sharpe, a shallower drawdown and lower beta: roughly break-even on a risk-adjusted basis |
-| Did it beat holding the basket in 2026 year-to-date? | More return, but through higher beta and volatility and a deeper drawdown. Eight months is too short to conclude |
+| Did it beat holding the basket in 2026 year-to-date? | More return, at a similar beta but with higher volatility and a deeper drawdown. Eight months is too short to conclude |
 | Does it help in the macro-stress regimes it was built for? | **Mixed.** It wins in rate shocks and elevated-VIX periods, and loses in VIX stress (> 25) by blocking re-entry |
 | Do the rules generalise to an unbiased universe? | **No.** On the point-in-time ETF control the overlay loses to buy-and-hold on every headline metric |
 | Where does the basket's return come from? | The names, not the rules: buy-and-hold alone shows the same 40% vs 13.5% gap between basket and ETFs |
@@ -63,9 +63,10 @@ and the market-context appendix: [`outputs/base/report.md`](outputs/base/report.
 | Beta vs S&P 500 | 2.27 | 2.23 | 0.99 |
 | Annualised volatility | 59.7% | 45.7% | 12.7% |
 
-The overlay added return, but through higher beta, higher volatility and a deeper drawdown.
-CAGR, Calmar and alpha are suppressed on windows under 24 months, and eight months is too short
-to conclude either way. Report: [`outputs/base_2026ytd/report.md`](outputs/base_2026ytd/report.md).
+The overlay added return at a similar beta (2.27 vs 2.23), with much higher volatility and a
+deeper drawdown: it held five names instead of twelve, concentrated in the year's strongest
+movers. CAGR, Calmar and alpha are suppressed on windows under 24 months, and eight months is
+too short to conclude either way. Report: [`outputs/base_2026ytd/report.md`](outputs/base_2026ytd/report.md).
 
 ### Does the overlay help where it was designed to? Performance by regime
 
